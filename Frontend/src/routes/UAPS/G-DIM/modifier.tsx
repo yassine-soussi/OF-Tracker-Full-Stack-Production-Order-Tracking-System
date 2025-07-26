@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import NavigationMenu from '@/components/G-DIM/NavigationMenugdim';
 import { PosteSelection } from '@/components/G-DIM/PosteSelectiongdim';
-import { PlanningEditor } from '@/components/planningedit';
+import { PlanningEditor } from '@/components/Planningedit';
 
 function ModifiergdimPage() {
   return (

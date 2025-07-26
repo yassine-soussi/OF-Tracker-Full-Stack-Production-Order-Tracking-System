@@ -18,4 +18,7 @@ app.use('/api/pdim', pdimRoutes);
 app.use('/api/gdim', gdimRoutes); 
 app.use('/api/profilee', PROFILEERoutes); 
 
+
+
+
 module.exports = app;  // Exporter l'app pour l'exécution dans index.js

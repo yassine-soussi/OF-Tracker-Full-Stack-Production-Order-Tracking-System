@@ -1,9 +1,12 @@
-// components/shared/HistoriqueShared.tsx
-
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import * as XLSX from 'xlsx';
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+/* TYPES */
 export interface Column {
   key: string;
   label: string;
@@ -11,6 +14,7 @@ export interface Column {
   isDate?: boolean;
 }
 
+/* BADGE STYLES */
 export const badgeStyle: Record<string, string> = {
   ready: 'bg-green-100 text-green-800',
   pending: 'bg-yellow-100 text-yellow-800',
@@ -23,6 +27,7 @@ export const label: Record<string, string> = {
   missing: 'Signalé',
 };
 
+/* COLONNES RÉUTILISABLES */
 export const HISTORIQUE_COLUMNS: Column[] = [
   { key: "poste", label: "Poste" },
   { key: "n_ordre", label: "N° Ordre" },
@@ -60,6 +65,52 @@ export const OUTIL_COLUMNS: Column[] = [
   { key: "detaille", label: "Détails" },
 ];
 
+/* HOOK DE FETCH */
+export function useFetchData<T = any>(url: string): [T[], boolean] {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(url)
+      .then(res => res.json())
+      .then(json => {
+        if (Array.isArray(json)) setData(json);
+      })
+      .catch(err => console.error(`Erreur de chargement depuis ${url}`, err))
+      .finally(() => setLoading(false));
+  }, [url]);
+
+  return [data, loading];
+}
+
+/* FILTRAGE */
+export function filterData(
+  data: Record<string, any>[],
+  search: string,
+  posteFilter?: string
+) {
+  const s = search.trim().toLowerCase();
+  return data.filter(row => {
+    const matchPoste = !posteFilter || row.poste === posteFilter;
+    const matchSearch =
+      !s ||
+      (row.n_ordre && row.n_ordre.toLowerCase().includes(s)) ||
+      (row.ordre && row.ordre.toLowerCase().includes(s));
+    return matchPoste && matchSearch;
+  });
+}
+
+/* EXPORT EXCEL */
+export function exportToExcel(data: any[], name: string) {
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, name);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  XLSX.writeFile(wb, `${name}-${timestamp}.xlsx`);
+}
+
+/* TABLEAU AVEC BADGES */
 export function TableWithBadges({
   columns,
   data
@@ -118,44 +169,77 @@ export function TableWithBadges({
   );
 }
 
-export function useFetchData<T = any>(url: string): [T[], boolean] {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
+/* SECTION GLOBALE */
+export function HistoriqueSection({
+  title,
+  columns,
+  data,
+  search,
+  setSearch,
+  selectLabel,
+  selectValue,
+  setSelectValue,
+  selectOptions,
+  onExport
+}: {
+  title: string;
+  columns: Column[];
+  data: Record<string, any>[];
+  search: string;
+  setSearch: (v: string) => void;
+  selectLabel?: string;
+  selectValue?: string;
+  setSelectValue?: (v: string) => void;
+  selectOptions?: string[];
+  onExport?: () => void;
+}) {
+  const hasSearched = search.trim() !== '' || (selectValue && selectValue.trim() !== '');
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(url)
-      .then(res => res.json())
-      .then(json => {
-        if (Array.isArray(json)) setData(json);
-      })
-      .catch(err => console.error(`Erreur de chargement depuis ${url}`, err))
-      .finally(() => setLoading(false));
-  }, [url]);
+  return (
+    <Card className="shadow-lg mb-8">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold mb-2">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-4 items-center mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Filtrer par N° Ordre ou Ordre..."
+            className="border px-4 py-2 rounded w-64"
+          />
+          {selectOptions && setSelectValue && (
+            <select
+              value={selectValue}
+              onChange={e => setSelectValue(e.target.value)}
+              className="border px-4 py-2 rounded w-56"
+            >
+              <option value="">{selectLabel}</option>
+              {selectOptions.map(o => <option key={o}>{o}</option>)}
+            </select>
+          )}
+          {onExport && (
+            <Button
+              className="bg-[#ef8f0e] text-white"
+              onClick={onExport}
+            >
+              Exporter Excel
+            </Button>
+          )}
+        </div>
 
-  return [data, loading];
-}
-
-export function filterData(
-  data: Record<string, any>[],
-  search: string,
-  posteFilter?: string
-) {
-  const s = search.trim().toLowerCase();
-  return data.filter(row => {
-    const matchPoste = !posteFilter || row.poste === posteFilter;
-    const matchSearch =
-      !s ||
-      (row.n_ordre && row.n_ordre.toLowerCase().includes(s)) ||
-      (row.ordre && row.ordre.toLowerCase().includes(s));
-    return matchPoste && matchSearch;
-  });
-}
-
-export function exportToExcel(data: any[], name: string) {
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, name);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  XLSX.writeFile(wb, `${name}-${timestamp}.xlsx`);
+        {hasSearched ? (
+          <div className="overflow-auto border rounded">
+            <TableWithBadges columns={columns} data={data} />
+            <div className="p-2 text-sm text-gray-600">
+              {data.length} lignes affichées
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-orange-600 px-2"></div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

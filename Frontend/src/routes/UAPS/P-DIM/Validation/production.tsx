@@ -138,7 +138,7 @@ export function ValidationProduction() {
           Validation Production
         </div>
         <div className="text-[25px] font-[Lobster] text-[#FF7F50] drop-shadow-[1px_1px_3px_rgba(0,0,0,0.3)]">
-          P-DIM ET MÉTAUX DURS
+          P-DIM 
         </div>
       </header>
 

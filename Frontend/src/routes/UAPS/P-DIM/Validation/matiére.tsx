@@ -12,8 +12,7 @@ type Matier = {
   article_description?: string | null;
   commentaires_planif?: string | null;
 }
-
-
+  const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"];
 
 export function ValidationMatiere() {
   const [poste, setPoste] = useState("")
@@ -23,36 +22,31 @@ export function ValidationMatiere() {
   const [showForm, setShowForm] = useState<string | null>(null)
   const [problemCause, setProblemCause] = useState("")
   const [details, setDetails] = useState("")
-  const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"];
 
-
-useEffect(() => {
+  useEffect(() => {
   if (!poste) {
-    setMatieres([]); // Vide la liste si aucun poste sélectionné
-    return;
-  }
-  fetch(`http://localhost:5000/api/pdim/matiere/of/${poste}`)
-    .then(res => res.json())
-    .then(data => {
-      const list = Array.isArray(data.matieres) ? data.matieres : [];
-      setMatieres(
-        list.map((m: any) => ({
-          id: `${m.n_ordre}__${m.ordre}`,
+    return; }
+    fetch(`http://localhost:5000/api/pdim/matiere/${poste}`)
+      .then(res => res.json())
+      .then(data => {
+        const matieresData = Array.isArray(data.matieres) ? data.matieres : []
+        const mapped = matieresData.map((m: any) => ({
+          id: `${poste}-${m.n_ordre}`,
           ordre: m.ordre || "",
           n_ordre: String(m.n_ordre),
-          statut: ['pending', 'ready', 'missing'].includes(m.statut) ? m.statut : 'pending',
+          statut: ["pending", "ready", "missing"].includes(m.statut) ? m.statut : "pending",
           besoin_machine: m.besoin_machine ? new Date(m.besoin_machine) : null,
           article: m.article ?? null,
           article_description: m.article_description ?? null,
-          commentaires_planif: m.commentaires_planif ?? ""
+          commentaires_planif: m.commentaires_planif ?? null
         }))
-      );
-    })
-    .catch(err => {
-      console.error("Erreur fetch matieres:", err);
-      setMatieres([]);
-    });
-}, [poste, refreshKey]);
+        setMatieres(mapped)
+      })
+      .catch(err => {
+        console.error("Erreur fetch matières :", err)
+        setMatieres([])
+      })
+  }, [poste, refreshKey])
 
   const validateMatier = async (id: string) => {
     const matiere = matieres.find(m => m.id === id)

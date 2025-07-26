@@ -25,11 +25,9 @@ export function ValidationMatiere() {
   const [problemCause, setProblemCause] = useState("")
   const [details, setDetails] = useState("")
 
-  useEffect(() => {
+ useEffect(() => {
   if (!poste) {
-    setMatieres([]); // Vide la liste si aucun poste sélectionné
-    return;
-  }
+    return; }
 
   fetch(`http://localhost:5000/api/profilee/matiere/${poste}`)
     .then(res => res.json())

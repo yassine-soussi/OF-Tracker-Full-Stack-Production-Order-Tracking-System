@@ -23,9 +23,9 @@ export function ValidationMatiere() {
   const [problemCause, setProblemCause] = useState("")
   const [details, setDetails] = useState("")
 
-  useEffect(() => {
-  setMatieres([])  // ← vide la liste immédiatement au changement de poste !
-  if (!poste) return
+ useEffect(() => {
+  if (!poste) {
+    return; }
     fetch(`http://localhost:5000/api/gdim/matiere/${poste}`)
       .then(res => res.json())
       .then(data => {
