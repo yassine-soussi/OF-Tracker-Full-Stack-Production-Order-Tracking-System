@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState, useEffect, useMemo } from "react"
+import ProtectedRoute from "@/components/ProtectedRoute"
 import { PosteSelection, SearchBar, TableRowMatiere, ProblemFormModal } from "@/components/matiereUI";
 
 type Matier = {
@@ -12,7 +13,7 @@ type Matier = {
   article_description?: string | null;
   commentaires_planif?: string | null;
 }
-  const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"];
+const POSTES = ["MC401", "MC501", "NHD-A", "NM8-A", "V2P01" , "V2P02" , "MIN01" ,"MIN02" , "MIN03" ];
 
 export function ValidationMatiere() {
   const [poste, setPoste] = useState("")
@@ -23,10 +24,10 @@ export function ValidationMatiere() {
   const [problemCause, setProblemCause] = useState("")
   const [details, setDetails] = useState("")
 
-  useEffect(() => {
+ useEffect(() => {
   if (!poste) {
     return; }
-    fetch(`http://localhost:5000/api/pdim/matiere/${poste}`)
+    fetch(`http://localhost:5000/api/gdim/matiere/${poste}`)
       .then(res => res.json())
       .then(data => {
         const matieresData = Array.isArray(data.matieres) ? data.matieres : []
@@ -51,7 +52,7 @@ export function ValidationMatiere() {
   const validateMatier = async (id: string) => {
     const matiere = matieres.find(m => m.id === id)
     if (!matiere || !poste) return
-    await fetch(`http://localhost:5000/api/pdim/matiere/statut_matiere/${poste}/${matiere.n_ordre}`, {
+    await fetch(`http://localhost:5000/api/gdim/matiere/statut_matiere/${poste}/${matiere.n_ordre}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -67,7 +68,7 @@ export function ValidationMatiere() {
     if (!showForm || !poste) return
     const matiere = matieres.find(m => m.id === showForm)
     if (!matiere || !problemCause) return alert("Veuillez indiquer une cause")
-    await fetch(`http://localhost:5000/api/pdim/matiere/statut_matiere/${poste}/${matiere.n_ordre}`, {
+    await fetch(`http://localhost:5000/api/gdim/matiere/statut_matiere/${poste}/${matiere.n_ordre}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -101,60 +102,62 @@ export function ValidationMatiere() {
   }, [matieres, search])
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="w-full bg-white shadow-md py-4 px-6 flex justify-between items-center">
-        <div className="text-[25px] font-[Lobster] text-[#FF7F50] drop-shadow-[1px_1px_3px_rgba(0,0,0,0.3)]">
-          Validation matiére
-        </div>
-        <div className="text-[25px] font-[Lobster] text-[#FF7F50] drop-shadow-[1px_1px_3px_rgba(0,0,0,0.3)]">
-          P-DIM
-        </div>
-      </header>
-      <main className="flex-1 p-8">
-        <div className="max-w-8xl mx-auto bg-white rounded-lg shadow-md p-6">
-          <PosteSelection poste={poste} setPoste={setPoste} postes={POSTES} />
-          <SearchBar value={search} onChange={setSearch} />
-          <table className="w-full table-auto border-t text-sm">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="px-4 py-2">Ordre</th>
-                <th className="px-4 py-2">N° Ordre</th>
-                <th className="px-4 py-2">Article</th>
-                <th className="px-4 py-2">Article Description</th>
-                <th className="px-4 py-2">Besoin machine</th>
-                <th className="px-4 py-2">Statut</th>
-                <th className="px-4 py-2">Commentaires Planif</th>
-                <th className="px-4 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {matieresFiltered.map(m => (
-                <TableRowMatiere key={m.id} m={m} onValidate={validateMatier} onSignal={setShowForm} />
-              ))}
-            </tbody>
-          </table>
-          <div className="mt-4 text-sm text-gray-600 text-right">
-            Lignes affichées : {matieresFiltered.length}
+    <ProtectedRoute requiredRoute="/UAPS/G-DIM/Validation/matiere">
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <header className="w-full bg-white shadow-md py-4 px-6 flex justify-between items-center">
+          <div className="text-[25px] font-[Lobster] text-[#FF7F50] drop-shadow-[1px_1px_3px_rgba(0,0,0,0.3)]">
+            Validation matiére
           </div>
-          {matieres.length === 0 && (
-            <div className="text-center text-gray-400 mt-4">Aucune matière trouvée pour ce poste.</div>
-          )}
-        </div>
-      </main>
-      {showForm && (
-        <ProblemFormModal
-          problemCause={problemCause}
-          setProblemCause={setProblemCause}
-          details={details}
-          setDetails={setDetails}
-          onCancel={() => setShowForm(null)}
-          onSubmit={submitProblem}
-        />
-      )}
-    </div>
+          <div className="text-[25px] font-[Lobster] text-[#FF7F50] drop-shadow-[1px_1px_3px_rgba(0,0,0,0.3)]">
+            G-DIM
+          </div>
+        </header>
+        <main className="flex-1 p-8">
+          <div className="max-w-8xl mx-auto bg-white rounded-lg shadow-md p-6">
+            <PosteSelection poste={poste} setPoste={setPoste} postes={POSTES} />
+            <SearchBar value={search} onChange={setSearch} />
+            <table className="w-full table-auto border-t text-sm">
+              <thead className="bg-gray-100 text-left">
+                <tr>
+                  <th className="px-4 py-2">Ordre</th>
+                  <th className="px-4 py-2">N° Ordre</th>
+                  <th className="px-4 py-2">Article</th>
+                  <th className="px-4 py-2">Article Description</th>
+                  <th className="px-4 py-2">Besoin machine</th>
+                  <th className="px-4 py-2">Statut</th>
+                  <th className="px-4 py-2">Commentaires Planif</th>
+                  <th className="px-4 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matieresFiltered.map(m => (
+                  <TableRowMatiere key={m.id} m={m} onValidate={validateMatier} onSignal={setShowForm} />
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-4 text-sm text-gray-600 text-right">
+              Lignes affichées : {matieresFiltered.length}
+            </div>
+            {matieres.length === 0 && (
+              <div className="text-center text-gray-400 mt-4">Aucune matière trouvée pour ce poste.</div>
+            )}
+          </div>
+        </main>
+        {showForm && (
+          <ProblemFormModal
+            problemCause={problemCause}
+            setProblemCause={setProblemCause}
+            details={details}
+            setDetails={setDetails}
+            onCancel={() => setShowForm(null)}
+            onSubmit={submitProblem}
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   )
 }
 
-export const Route = createFileRoute('/UAPS/P-DIM/Validation/matiére')({
+export const Route = createFileRoute('/UAPS/G-DIM/Validation/matiere')({
   component: ValidationMatiere,
 });

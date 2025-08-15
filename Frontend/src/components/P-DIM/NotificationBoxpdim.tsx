@@ -18,7 +18,7 @@ export default function NotificationBox() {
   const [showDetails, setShowDetails] = useState<ProblemNotification | null>(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/pdim/notifications/all`)
+    fetch(`/api/pdim/notifications/all`)
       .then((res) => res.json())
       .then((data) => {
         console.log("Notifications reçues :", data);
@@ -42,19 +42,54 @@ export default function NotificationBox() {
 
   const onNotificationClick = useCallback(
     (id: number) => {
+      console.log("Notification clicked, ID:", id);
       const notif = notifications.find((n) => n.id === id);
-      if (!notif) return;
+      if (!notif) {
+        console.log("Notification not found");
+        return;
+      }
+      console.log("Setting showDetails to:", notif);
       setShowDetails(notif);
       setShowDropdown(false);
     },
     [notifications]
   );
 
+  const deleteNotification = useCallback(
+    async (id: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      console.log("Deleting notification with ID:", id);
+      try {
+        console.log("Making DELETE request to:", `/api/pdim/notifications/${id}`);
+        const response = await fetch(`/api/pdim/notifications/${id}`, {
+          method: "DELETE",
+        });
+
+        console.log("Delete response status:", response.status);
+        console.log("Delete response OK:", response.ok);
+        console.log("Delete response headers:", response.headers);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Error response text:", errorText);
+          throw new Error(`Erreur lors de la suppression de la notification: ${response.status} ${errorText}`);
+        }
+
+        // Remove the notification from the local state
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+        console.log("Notification deleted successfully");
+      } catch (err) {
+        console.error("Erreur de suppression de la notification", err);
+      }
+    },
+    []
+  );
+
   return (
     <div className="relative">
       <div
         onClick={() => setShowDropdown((s) => !s)}
-        className="relative cursor-pointer"
+        className="relative cursor-pointer hover:bg-white/10 rounded transition-colors duration-200 p-1"
         tabIndex={0}
         aria-label="Notifications"
         role="button"
@@ -62,7 +97,7 @@ export default function NotificationBox() {
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-7 w-7 text-[#FF7F50]"
+          className="h-5 w-5 text-white"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -76,7 +111,7 @@ export default function NotificationBox() {
           />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs  rounded-full h-4 w-4 flex items-center justify-center shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
             {unreadCount}
           </span>
         )}
@@ -86,7 +121,7 @@ export default function NotificationBox() {
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-20">
           <div className="py-1">
             <div className="px-4 py-2 text-sm font-medium text-gray-700 border-b bg-gray-50">
-              Notifications ({notifications.length})
+              <span>Notifications ({notifications.length})</span>
             </div>
             {notifications.length === 0 ? (
               <div className="px-4 py-4 text-sm text-center text-gray-500">
@@ -97,8 +132,11 @@ export default function NotificationBox() {
                 {notifications.map((n) => (
                   <div
                     key={n.id}
-                    className="px-4 py-3 border-b cursor-pointer hover:bg-gray-100"
-                    onClick={() => onNotificationClick(n.id)}
+                    className="px-4 py-3 border-b cursor-pointer hover:bg-gray-100 relative"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNotificationClick(n.id);
+                    }}
                   >
                     <div className="flex justify-between items-start">
                       <span className="text-sm font-medium text-gray-700">
@@ -119,6 +157,15 @@ export default function NotificationBox() {
                     <div className="text-xs text-gray-400 mt-1">
                       {n.date.toLocaleString()}
                     </div>
+                    <div 
+                      className="text-blue-500 text-xs underline cursor-pointer absolute bottom-1 right-1"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        deleteNotification(n.id, e);
+                      }}
+                    >
+                      supprimer
+                    </div>
                   </div>
                 ))}
               </div>
@@ -129,7 +176,7 @@ export default function NotificationBox() {
 
       {showDetails && (
         <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white p-6 rounded-md w-full max-w-md">
+          <div className="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-medium">
                 Détails –{" "}
@@ -179,6 +226,23 @@ export default function NotificationBox() {
                   <div><strong>Date :</strong> {showDetails.date.toLocaleString()}</div>
                 </>
               )}
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDetails(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Fermer
+              </button>
+              <button
+                onClick={(e) => {
+                  deleteNotification(showDetails.id, e);
+                  setShowDetails(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Supprimer
+              </button>
             </div>
           </div>
         </div>

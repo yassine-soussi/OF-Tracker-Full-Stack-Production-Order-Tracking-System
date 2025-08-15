@@ -5,10 +5,12 @@ import { memo } from 'react';
 export const STATUTS = {
   pending: { color: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
   ready: { color: 'bg-green-100 text-green-800', label: 'Validé' },
+  started: { color: 'bg-blue-200 text-blue-900', label: 'Débuté' },
   missing: { color: 'bg-red-100 text-red-800', label: 'Signalé' },
+  closed: { color: 'bg-blue-100 text-blue-800', label: 'Clôturé' },
 };
 
-export const StatutBadge = memo(function StatutBadge({ statut }: { statut: 'pending' | 'ready' | 'missing' }) {
+export const StatutBadge = memo(function StatutBadge({ statut }: { statut: 'pending' | 'ready' | 'started' | 'missing' | 'closed' }) {
   const { color, label } = STATUTS[statut] ?? { color: 'bg-gray-200 text-gray-600', label: 'Inconnu' };
   return (
     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${color}`}>{label}</span>
@@ -43,6 +45,23 @@ export const ProductionRow = memo(function ProductionRow({
   validateOF: (id: string) => void;
   reportProblem: (id: string) => void;
 }) {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return '-';
+    }
+  };
+
   return (
     <tr>
       <td className="px-4 py-2">{of.ordre}</td>
@@ -52,9 +71,10 @@ export const ProductionRow = memo(function ProductionRow({
       <td className="px-4 py-2"><StatutBadge statut={of.statut_matiere} /></td>
       <td className="px-4 py-2"><StatutBadge statut={of.statut_outil} /></td>
       <td className="px-4 py-2"><StatutBadge statut={of.statut_of} /></td>
-      <td className="px-4 py-2">{of.commentaire_planif || "-"}</td>
+      <td className="px-4 py-2">{formatDate(of.date_validation)}</td>
+      <td className="px-4 py-2">{of.commentaires_planif || "-"}</td>
       <td className="px-4 py-2">
-        {of.statut_of !== 'ready' && (
+        {of.statut_of !== 'ready' && of.statut_of !== 'closed' && (
           <div className="flex gap-3">
             <button onClick={() => validateOF(of.id)} className="text-green-600 hover:underline" type="button">
               Clôturer
@@ -89,6 +109,7 @@ export const ProductionTable = memo(function ProductionTable({
           <th className="px-4 py-2">Matière</th>
           <th className="px-4 py-2">Outil</th>
           <th className="px-4 py-2">OF</th>
+          <th className="px-4 py-2">Date Validation</th>
           <th className="px-4 py-2">Commentaires Planif</th>
           <th className="px-4 py-2">Actions</th>
         </tr>

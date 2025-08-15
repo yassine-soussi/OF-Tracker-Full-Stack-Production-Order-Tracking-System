@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@clerk/react-router": "^1.8.7",
+    "@heroicons/react": "^2.2.0",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
@@ -10,12 +11,16 @@
     "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",
     "dhtmlx-gantt": "^9.0.13",
+    "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.1",
+    "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "selfsigned": "^3.0.1",
     "styled-components": "^6.1.19",
     "xlsx": "^0.18.5"
   },

@@ -54,7 +54,7 @@ export default function NotificationBox() {
     <div className="relative">
       <div
         onClick={() => setShowDropdown((s) => !s)}
-        className="relative cursor-pointer"
+        className="relative cursor-pointer hover:bg-white/10 rounded transition-colors duration-200 p-1"
         tabIndex={0}
         aria-label="Notifications"
         role="button"
@@ -62,7 +62,7 @@ export default function NotificationBox() {
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-7 w-7 text-[#FF7F50]"
+          className="h-4 w-4 text-white"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

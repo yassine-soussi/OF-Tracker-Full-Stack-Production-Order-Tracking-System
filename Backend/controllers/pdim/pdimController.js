@@ -6,9 +6,7 @@ const saveRecapPlanning = async (req, res) => {
   try {
     await pool.query(
       `INSERT INTO recap_planning_pdim (week_number, production, ruptures, created_at)
-        VALUES ($1, $2, $3, NOW())
-        ON CONFLICT (week_number)
-        DO UPDATE SET production = $2, ruptures = $3, created_at = NOW()`,
+        VALUES ($1, $2, $3, NOW())`,
       [weekNumber, JSON.stringify(production), JSON.stringify(ruptures)]
     );
     res.json({ success: true });
@@ -65,16 +63,46 @@ const getRecapPlanningByWeek = async (req, res) => {
   const { weekNumber } = req.params;
   try {
     const { rows } = await pool.query(
-      `SELECT week_number, production, ruptures 
-        FROM recap_planning_pdim 
-        WHERE week_number = $1 
-        ORDER BY created_at DESC`,
+      `SELECT week_number, production, ruptures
+        FROM recap_planning_pdim
+        WHERE week_number = $1
+        ORDER BY created_at DESC
+        LIMIT 1`,
       [weekNumber]
     );
-    res.json(rows);
+    if (rows.length > 0) {
+      res.json({
+        production: rows[0].production,
+        ruptures: rows[0].ruptures,
+        weekNumber: rows[0].week_number,
+      });
+    } else {
+      res.json({
+        production: [],
+        ruptures: [],
+        weekNumber: weekNumber
+      });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur lors de la récupération des plannings" });
+  }
+};
+
+// --- GET : Récupérer seulement les numéros de semaines disponibles ---
+const getAvailableWeeks = async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT week_number
+        FROM recap_planning_pdim
+        WHERE week_number IS NOT NULL AND week_number != ''
+        ORDER BY week_number DESC`
+    );
+    const weekNumbers = rows.map(row => row.week_number);
+    res.json(weekNumbers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur lors de la récupération des semaines" });
   }
 };
 
@@ -82,5 +110,6 @@ module.exports = {
   saveRecapPlanning,
   loadRecapPlanning,
   getAllRecapPlannings,
-  getRecapPlanningByWeek
+  getRecapPlanningByWeek,
+  getAvailableWeeks
 };

@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+
 const {
   saveRecapPlanning,
   loadRecapPlanning,
   getAllRecapPlannings,
-  getRecapPlanningByWeek
+  getRecapPlanningByWeek,
+  getAvailableWeeks
 } = require('../../controllers/profilee/profileeController');
 
 // Sauvegarder un recap planning
@@ -18,5 +20,9 @@ router.get('/all', getAllRecapPlannings);
 
 // Récupérer le recap planning d'une semaine spécifique
 router.get('/by-week/:weekNumber', getRecapPlanningByWeek);
+
+// Récupérer les numéros de semaines disponibles
+router.get('/available-weeks', getAvailableWeeks);
+router.get('/weeks', getAvailableWeeks);
 
 module.exports = router;

@@ -72,38 +72,63 @@ export const TableRowMatiere = ({
     n_ordre: string;
     article?: string | null;
     article_description?: string | null;
+    resource?: string | null;
     besoin_machine: Date | null;
     statut: 'pending' | 'ready' | 'missing';
     commentaires_planif?: string | null;
+    date_validation?: string | null;
   },
   onValidate: (id: string) => void,
   onSignal: (id: string) => void
-}) => (
-  <tr key={m.id}>
-    <td className="px-4 py-2">{m.ordre}</td>
-    <td className="px-4 py-2">{m.n_ordre}</td>
-    <td className="px-4 py-2">{m.article || "-"}</td>
-    <td className="px-4 py-2">{m.article_description || "-"}</td>
-    <td className="px-4 py-2">
-      <input
-        type="text"
-        readOnly
-        className="border px-2 py-1 rounded"
-        value={m.besoin_machine ? m.besoin_machine.toLocaleDateString("fr-FR") : ""}
-      />
-    </td>
-    <td className="px-4 py-2"><StatutBadge statut={m.statut} /></td>
-    <td className="px-4 py-2">{m.commentaires_planif || "-"}</td>
-    <td className="px-4 py-2">
-      {["pending", "missing"].includes(m.statut) && (
-        <div className="flex gap-3">
-          <button onClick={() => onValidate(m.id)} className="text-green-600 hover:underline">Valider</button>
-          <button onClick={() => onSignal(m.id)} className="text-red-600 hover:underline">Signaler</button>
-        </div>
-      )}
-    </td>
-  </tr>
-)
+}) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return '-';
+    }
+  };
+
+  return (
+    <tr key={m.id}>
+      <td className="px-2 py-2 w-20">{m.ordre}</td>
+      <td className="px-2 py-2 w-24">{m.n_ordre}</td>
+      <td className="px-2 py-2 w-24">{m.article || "-"}</td>
+      <td className="px-2 py-2 w-32">{m.article_description || "-"}</td>
+      <td className="px-2 py-2 w-20">{m.resource || "-"}</td>
+      <td className="px-2 py-2 w-28">
+        <input
+          type="text"
+          readOnly
+          className="border px-2 py-1 rounded w-full"
+          value={m.besoin_machine ? m.besoin_machine.toLocaleDateString("fr-FR") : ""}
+        />
+      </td>
+      <td className="px-2 py-2 w-32">{m.commentaires_planif || "-"}</td>
+      <td className="px-2 py-2 w-44 min-w-44">
+        <span className="whitespace-nowrap text-xs">{formatDate(m.date_validation)}</span>
+      </td>
+      <td className="px-2 py-2 w-24">
+        {["pending", "missing"].includes(m.statut) && (
+          <div className="flex gap-1">
+            <button onClick={() => onValidate(m.id)} className="text-green-600 hover:underline text-xs">Valider</button>
+            <button onClick={() => onSignal(m.id)} className="text-red-600 hover:underline text-xs">Signaler</button>
+          </div>
+        )}
+      </td>
+      <td className="px-2 py-2 w-20"><StatutBadge statut={m.statut} /></td>
+    </tr>
+  );
+};
 
 export const ProblemFormModal = ({
   problemCause,

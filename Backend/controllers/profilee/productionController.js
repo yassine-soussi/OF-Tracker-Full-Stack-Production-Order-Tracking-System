@@ -31,7 +31,9 @@ const getProductionByPoste = async (req, res) => {
       ? data.filter(entry => entry["N° ordre"]).map(entry => {
           const cleaned = Object.fromEntries(Object.entries(entry).map(([k, v]) => [k.trim(), v]));
           const n_ordre = String(cleaned["N° ordre"]);
-          const commentaires_planif = cleaned["Commentaires Planif"] || null;
+           const commentaires_planif = cleaned["Commentaires Planif"] || null;
+             const Qté_restante = cleaned["Qté restante"] || null;
+
 
           return {
             n_ordre,
@@ -41,7 +43,8 @@ const getProductionByPoste = async (req, res) => {
             statut_matiere: matiereMap[n_ordre] || 'pending',
             statut_outil: outilMap[n_ordre] || 'pending',
             statut_of: ofMap[n_ordre]?.statut_of || 'pending',
-            commentaires_planif // Ajout du champ Commentaires Planif
+            commentaires_planif ,
+           Qté_restante 
           };
         })
       : [];
@@ -148,7 +151,7 @@ const updateStatutOf = async (req, res) => {
 
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error("❌ Erreur PUT /production/statut :", err);
+    console.error(" Erreur PUT /production/statut :", err);
     return res.status(500).json({ error: `Erreur serveur: ${err.message}` });
   } finally {
     client.release();

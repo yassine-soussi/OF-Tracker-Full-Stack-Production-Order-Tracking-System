@@ -17,6 +17,42 @@ const getNotifications = async (req, res) => {
   }
 };
 
-// Marquer une notification comme lue
+// Supprimer une notification
+const deleteNotification = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      'DELETE FROM notifications_pdim WHERE id = $1',
+      [id]
+    );
 
-module.exports = { getNotifications };
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Notification non trouvée" });
+    }
+
+    res.json({ success: true, message: "Notification supprimée avec succès" });
+  } catch (err) {
+    console.error("Erreur suppression notification_PDIM :", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+// Créer une notification
+const createNotification = async (req, res) => {
+  const { poste, n_ordre, tool_name, cause, details, date, type_probleme } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO notifications_pdim (poste, n_ordre, tool_name, cause, details, date, type_probleme)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *`,
+      [poste, n_ordre, tool_name, cause, details, date, type_probleme]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Erreur création notification_PDIM :", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
+
+module.exports = { getNotifications, deleteNotification, createNotification };

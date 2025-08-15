@@ -23,6 +23,7 @@ export function usePlanningManager<TProd, TRupture>({
   const [productionData, setProductionData] = useState<TProd[]>(initialProductionData);
   const [ruptureData, setRuptureData] = useState<TRupture[]>(initialRuptureData);
   const [weekNumber, setWeekNumber] = useState<string>(defaultWeek);
+  const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [baseProductionData, setBaseProductionData] = useState<TProd[]>(initialProductionData);
@@ -54,6 +55,19 @@ export function usePlanningManager<TProd, TRupture>({
     }
   };
 
+  // Récupérer les semaines disponibles
+  const fetchAvailableWeeks = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/${apiBase}/${apiBase}/weeks`);
+      if (res.ok) {
+        const weeks = await res.json();
+        setAvailableWeeks(weeks);
+      }
+    } catch (error) {
+      console.error('Error fetching available weeks:', error);
+    }
+  };
+
   // Charger planning par semaine (GET /by-week)
   const fetchPlanning = async (val: string) => {
     if (!val.trim()) {
@@ -65,17 +79,38 @@ export function usePlanningManager<TProd, TRupture>({
       const res = await fetch(`http://localhost:5000/api/${apiBase}/${apiBase}/by-week/${val.trim()}`);
       if (!res.ok) throw new Error("Not found");
       const data = await res.json();
-      if (!data || data.length === 0) throw new Error("Not found");
-      const first = data[0];
-      setProductionData(first.production || initialProductionData);
-      setRuptureData(first.ruptures || []);
-      setBaseProductionData(first.production || initialProductionData);
-      setBaseRuptureData(first.ruptures || []);
-      setWeekNumber(first.week_number || val.trim());
-      toast.success(`Planning semaine ${val.trim()} chargé !`);
+      
+      // Check if we have meaningful data (not just empty structure)
+      const hasActualData = data.production && data.production.length > 0 &&
+        data.production.some((row: any) =>
+          Object.values(row).some((value: any) => value && value.toString().trim() !== "")
+        );
+      
+      if (hasActualData) {
+        // Load existing data
+        setProductionData(data.production);
+        setRuptureData(data.ruptures || []);
+        setBaseProductionData(data.production);
+        setBaseRuptureData(data.ruptures || []);
+        setWeekNumber(data.weekNumber || val.trim());
+        toast.success(`Planning semaine ${val.trim()} chargé !`);
+      } else {
+        // No data found - initialize empty table for this week
+        setProductionData(initialProductionData);
+        setRuptureData(initialRuptureData);
+        setBaseProductionData(initialProductionData);
+        setBaseRuptureData(initialRuptureData);
+        setWeekNumber(val.trim());
+        toast.info(`Semaine ${val.trim()} - Nouveau planning initialisé`);
+      }
     } catch {
-      toast.error("Aucun planning trouvé pour cette semaine");
-      await fetchLastPlanning();
+      toast.error("Erreur lors du chargement de la semaine");
+      // Initialize empty table for this week even on error
+      setProductionData(initialProductionData);
+      setRuptureData(initialRuptureData);
+      setBaseProductionData(initialProductionData);
+      setBaseRuptureData(initialRuptureData);
+      setWeekNumber(val.trim());
     } finally {
       setLoading(false);
     }
@@ -138,13 +173,35 @@ export function usePlanningManager<TProd, TRupture>({
     }
   };
 
+  // Clear table data when week number changes
+  const clearTableData = () => {
+    setProductionData(initialProductionData);
+    setRuptureData(initialRuptureData);
+    setBaseProductionData(initialProductionData);
+    setBaseRuptureData(initialRuptureData);
+  };
+
+  // Add week to available weeks (for new week creation)
+  const addWeekToAvailable = (newWeek: string) => {
+    if (!availableWeeks.includes(newWeek)) {
+      // Add new week at the beginning (most recent)
+      const updatedWeeks = [newWeek, ...availableWeeks];
+      setAvailableWeeks(updatedWeeks);
+      console.log('Added new week to available weeks:', newWeek, updatedWeeks); // Debug log
+    }
+  };
+
   return {
     productionData, setProductionData,
     ruptureData, setRuptureData,
     weekNumber, setWeekNumber,
+    availableWeeks, setAvailableWeeks,
     loading,
     fetchLastPlanning,
     fetchPlanning,
+    fetchAvailableWeeks,
+    addWeekToAvailable,
+    clearTableData,
     handleProdCellChange,
     handleRuptureChange,
     handleRuptureDateChange,

@@ -5,7 +5,7 @@ import { EditableTable } from '@/components/EditableTable';
 import { RuptureTable, type RuptureData } from '@/components/RuptureTable';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   usePlanningManager,
   exportToExcel
@@ -43,8 +43,8 @@ const newRuptureRow: RuptureData = {
 
 function TablesComponent() {
   const {
-    productionData, ruptureData, weekNumber, loading,
-    setWeekNumber, fetchPlanning, fetchLastPlanning,
+    productionData, ruptureData, weekNumber, availableWeeks, loading,
+    setWeekNumber, fetchPlanning, fetchLastPlanning, fetchAvailableWeeks, addWeekToAvailable, clearTableData,
     handleProdCellChange, handleRuptureChange, handleRuptureDateChange,
     handleRemoveRupture, handleAddRuptureRow, saveToBackend, isSaveDisabled
   } = usePlanningManager<ProductionRow, RuptureData>({
@@ -53,16 +53,100 @@ function TablesComponent() {
     apiBase: 'pdim'
   });
 
-  // Charger le dernier planning au montage
-  useEffect(() => { fetchLastPlanning(); }, []);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newWeekInput, setNewWeekInput] = useState('');
+  const [weekFormatError, setWeekFormatError] = useState('');
+
+  // Charger le dernier planning et les semaines disponibles au montage
+  useEffect(() => {
+    fetchLastPlanning();
+    fetchAvailableWeeks();
+  }, []);
 
   // Handlers UI
-  const handleWeekNumberChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setWeekNumber(e.target.value);
-
-  const handleWeekNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") fetchPlanning(e.currentTarget.value);
+  const handleWeekSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    
+    if (selectedValue === 'new') {
+      setIsCreatingNew(true);
+      setNewWeekInput('');
+      clearTableData();
+      setWeekNumber('');
+    } else if (selectedValue) {
+      setIsCreatingNew(false);
+      setWeekNumber(selectedValue);
+      fetchPlanning(selectedValue);
+    }
   };
+
+  // Validation function for week format
+  const validateWeekFormat = (week: string): boolean => {
+    // Format should be YYYY-W##, where YYYY is year and ## is week number (1-53)
+    const weekRegex = /^\d{4}-W([1-9]|[1-4][0-9]|5[0-3])$/;
+    return weekRegex.test(week);
+  };
+
+  const handleNewWeekSubmit = () => {
+    const trimmedWeek = newWeekInput.trim();
+    
+    if (!trimmedWeek) {
+      setWeekFormatError('Le numéro de semaine est requis');
+      return;
+    }
+    
+    if (!validateWeekFormat(trimmedWeek)) {
+      setWeekFormatError('Format invalide. Utilisez le format YYYY-W## (ex: 2025-W32)');
+      return;
+    }
+    
+    console.log('Creating new week:', trimmedWeek); // Debug log
+    
+    // Clear any previous error
+    setWeekFormatError('');
+    
+    // Add the new week to available weeks list first
+    addWeekToAvailable(trimmedWeek);
+    
+    // Then set the week number and clear data
+    setWeekNumber(trimmedWeek);
+    clearTableData();
+    
+    // Reset the form state
+    setIsCreatingNew(false);
+    setNewWeekInput('');
+  };
+
+  const handleNewWeekKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleNewWeekSubmit();
+    } else if (e.key === "Escape") {
+      setIsCreatingNew(false);
+      setNewWeekInput('');
+    }
+  };
+
+  const handleCancelNewWeek = () => {
+    setIsCreatingNew(false);
+    setNewWeekInput('');
+    setWeekFormatError('');
+    // Reset select to current week or empty
+    // The select will show the current weekNumber value
+  };
+
+  // Handle input change with real-time validation feedback
+  const handleWeekInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewWeekInput(value);
+    
+    // Clear error when user starts typing
+    if (weekFormatError) {
+      setWeekFormatError('');
+    }
+  };
+
+  // Check if the current input is valid for enabling/disabling OK button
+  const isWeekFormatValid = newWeekInput.trim() && validateWeekFormat(newWeekInput.trim());
 
   const handleExport = () => {
     exportToExcel({
@@ -88,17 +172,56 @@ function TablesComponent() {
     <div className="space-y-8">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">
-          <label htmlFor="weekNumber" className="text-lg font-medium">N°.sem:</label>
-          <input
-            id="weekNumber"
-            type="text"
-            value={weekNumber}
-            onChange={handleWeekNumberChange}
-            onKeyDown={handleWeekNumberKeyDown}
-            className="w-28 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-400"
-            placeholder="2025-S29"
-            disabled={loading}
-          />
+          <label htmlFor="weekSelect" className="text-lg font-medium">N°.sem:</label>
+          {isCreatingNew ? (
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={newWeekInput}
+                  onChange={handleWeekInputChange}
+                  onKeyDown={handleNewWeekKeyDown}
+                  className={`w-36 border rounded px-2 py-1 focus:ring-2 focus:ring-orange-400 ${
+                    weekFormatError ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="2025-W32"
+                  autoFocus
+                />
+                <Button
+                  onClick={handleNewWeekSubmit}
+                  size="sm"
+                  className="bg-green-600 text-white"
+                  disabled={!isWeekFormatValid}
+                >
+                  OK
+                </Button>
+                <Button
+                  onClick={handleCancelNewWeek}
+                  size="sm"
+                  variant="outline"
+                >
+                  Annuler
+                </Button>
+              </div>
+              {weekFormatError && (
+                <p className="text-red-500 text-sm ml-0">{weekFormatError}</p>
+              )}
+            </div>
+          ) : (
+            <select
+              id="weekSelect"
+              value={weekNumber}
+              onChange={handleWeekSelection}
+              className="w-40 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-400"
+              disabled={loading}
+            >
+              <option value="">-- Sélectionner une semaine --</option>
+              {availableWeeks.map(week => (
+                <option key={week} value={week}>{week}</option>
+              ))}
+              <option value="new">+ Nouvelle semaine</option>
+            </select>
+          )}
         </div>
         <div className="flex space-x-3">
           <Button onClick={saveToBackend} disabled={isSaveDisabled} className="bg-blue-600 text-white">
@@ -111,7 +234,7 @@ function TablesComponent() {
       </div>
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-[25px] font-[Lobster] text-orange-500 font-bold">
+          <CardTitle className="text-[25px] font-['Raleway'] text-[#ef8f0e] ]">
             Recap Planning
           </CardTitle>
         </CardHeader>
@@ -125,7 +248,7 @@ function TablesComponent() {
       </Card>
       <Card className="shadow-lg">
         <CardHeader className="flex justify-between items-center">
-          <CardTitle className="text-[25px] font-[Lobster] text-orange-500 font-bold">
+          <CardTitle className="text-[25px] font-['Raleway'] text-orange-500 font-bold">
             Matières en rupture à réceptionner
           </CardTitle>
           <Button onClick={() => handleAddRuptureRow(newRuptureRow)} className="bg-green-600 text-white" size="sm">

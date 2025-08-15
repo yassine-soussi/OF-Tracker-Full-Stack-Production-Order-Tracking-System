@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import {
   PosteSelection,
   ToolTable,
@@ -51,7 +52,7 @@ const POSTES = ["CHR01", "VCF-A", "CIN-A"];
             statut: ['pending', 'ready', 'missing'].includes(o.statut) ? o.statut : 'pending',
             article: o.article,
             article_description: o.article_description,
-            commentaire_planif: o.commentaire_planif || ""
+            commentaires_planif: o.commentaires_planif || ""
           }))
         );
       })
@@ -114,59 +115,61 @@ const POSTES = ["CHR01", "VCF-A", "CIN-A"];
   }, [showForm, outils, poste, problemCause, details]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="w-full bg-white shadow-md py-4 px-6 flex justify-between items-center">
-        <div className="text-[25px] font-[Lobster] text-[#FF7F50]">Validation outillage</div>
-        <div className="text-[25px] font-[Lobster] text-[#FF7F50]">PROFILEE</div>
-      </header>
-      <main className="flex-1 p-8">
-        <div className="max-w-8xl mx-auto bg-white rounded-lg shadow-md p-6">
-          <PosteSelection poste={poste} setPoste={setPoste} postes={POSTES} />
-          <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
-            <input
-              type="text"
-              placeholder="Rechercher par ordre ou N° ordre"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="border rounded px-3 py-2 w-64"
-            />
-            <div>
-              <label htmlFor="resource-select" className="block text-sm font-medium text-gray-700 mb-1">Filtrer par article</label>
-              <select
-                id="resource-select"
-                value={selectedResource ?? ""}
-                onChange={e => setSelectedResource(e.target.value || null)}
-                className="border border-gray-300 rounded px-3 py-2 w-64"
-              >
-                <option value="">-- Tous les articles --</option>
-                {ressourcesUniques.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+    <ProtectedRoute requiredRoute="/UAPS/PROFILEE/Validation/outillage">
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <header className="w-full bg-white shadow-md py-4 px-6 flex justify-between items-center">
+          <div className="text-[25px] font-[Lobster] text-[#FF7F50]">Validation outillage</div>
+          <div className="text-[25px] font-[Lobster] text-[#FF7F50]">PROFILEE</div>
+        </header>
+        <main className="flex-1 p-8">
+          <div className="max-w-8xl mx-auto bg-white rounded-lg shadow-md p-6">
+            <PosteSelection poste={poste} setPoste={setPoste} postes={POSTES} />
+            <div className="mb-4 flex flex-wrap gap-4 items-center justify-between">
+              <input
+                type="text"
+                placeholder="Rechercher par ordre ou N° ordre"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="border rounded px-3 py-2 w-64"
+              />
+              <div>
+                <label htmlFor="resource-select" className="block text-sm font-medium text-gray-700 mb-1">Filtrer par article</label>
+                <select
+                  id="resource-select"
+                  value={selectedResource ?? ""}
+                  onChange={e => setSelectedResource(e.target.value || null)}
+                  className="border border-gray-300 rounded px-3 py-2 w-64"
+                >
+                  <option value="">-- Tous les articles --</option>
+                  {ressourcesUniques.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+            <ToolTable tools={outilsFiltered} validateTool={validateTool} reportProblem={reportProblem} />
+            {outils.length > 0 && (
+              <div className="mt-4 text-sm text-right text-gray-700">
+                Nombre total de lignes : <span className="font-semibold">{outils.length}</span>
+              </div>
+            )}
+            {outils.length === 0 && (
+              <div className="text-center text-gray-400 mt-4">Aucun outil trouvé pour ce poste.</div>
+            )}
           </div>
-          <ToolTable tools={outilsFiltered} validateTool={validateTool} reportProblem={reportProblem} />
-          {outils.length > 0 && (
-            <div className="mt-4 text-sm text-right text-gray-700">
-              Nombre total de lignes : <span className="font-semibold">{outils.length}</span>
-            </div>
-          )}
-          {outils.length === 0 && (
-            <div className="text-center text-gray-400 mt-4">Aucun outil trouvé pour ce poste.</div>
-          )}
-        </div>
-      </main>
-      {showForm && (
-        <ProblemFormModal
-          problemCause={problemCause}
-          setProblemCause={setProblemCause}
-          details={details}
-          setDetails={setDetails}
-          onCancel={() => setShowForm(null)}
-          onSubmit={submitProblem}
-        />
-      )}
-    </div>
+        </main>
+        {showForm && (
+          <ProblemFormModal
+            problemCause={problemCause}
+            setProblemCause={setProblemCause}
+            details={details}
+            setDetails={setDetails}
+            onCancel={() => setShowForm(null)}
+            onSubmit={submitProblem}
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
 

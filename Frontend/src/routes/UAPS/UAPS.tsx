@@ -1,14 +1,15 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useUser } from '@/hooks/useUser'
 
 
-// Route avec TanStack Router : NE PAS SUPPRIMER
+
 export const Route = createFileRoute('/UAPS/UAPS')({
   component: UAPS,
 })
 
-const BUTTON_CLASSES = 'bg-orange-400 hover:bg-orange-600 text-white w-full'
+const BUTTON_COLOR_CLASSES = 'bg-orange-400 hover:bg-orange-600 text-white flex-1'
 
 const uapOptions = [
   { path: '/UAPS/P-DIM/P-DIM', label: 'P.DIM' },
@@ -17,42 +18,52 @@ const uapOptions = [
 ]
 
 function UAPS() {
+  const { firstName } = useUser();
+  
   return (
-    <div className="flex flex-col min-h-screen bg-white">
-      <header className="text-2xl font-[Lobster] text-[#FF7F50] drop-shadow-[1px_1px_3px_rgba(0,0,0,0.3)] py-4 px-6 shadow-md z-10">
-        Bienvenue Maroua
+    <div className="flex flex-col">
+      <header className="w-full">
+        <div
+          className="w-full py-3 px-6 bg-[#ef8f0e] text-white"
+          style={{
+            fontSize: '24px',
+            fontFamily: 'Raleway',
+          }}
+        >
+          Bienvenue {firstName}
+        </div>
       </header>
 
-      <main className="flex flex-1 items-start justify-center pt-12 px-4 md:px-7">
-        <div className="w-full max-w-md">
+      {/* Main content - stretched wider */}
+      <div className="flex justify-center pt-4 px-4">
+        <div className="w-full max-w-4xl"> {/* Increased max-width */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl">Unités Autonomes de Production</CardTitle>
             </CardHeader>
 
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-1">
               <p className="text-gray-600 text-lg">Veuillez sélectionner l'UAP appropriée :</p>
 
-              <nav className="flex flex-col gap-6" aria-label="Navigation des unités autonomes de production">
+              {/* Buttons container - full width with equal button widths */}
+              <div className="flex flex-row gap-4 w-full">
                 {uapOptions.map(({ path, label }) => (
-                  <Link key={path} to={path} aria-label={`Accéder à l'unité ${label}`}>
-                    <Button className={BUTTON_CLASSES}>{label}</Button>
+                  <Link key={path} to={path} className="flex-1 min-w-0" aria-label={`Accéder à l'unité ${label}`}>
+                    <Button className={`${BUTTON_COLOR_CLASSES} w-full`}>{label}</Button>
                   </Link>
                 ))}
-              </nav>
+              </div>
 
-              <div className="pt-5">
+              <div>
                 <Link to="/" className="inline-block text-[#FF7F50] hover:underline text-sm" aria-label="Retour à la page de connexion">
-                  ← Retour à la connexion
                 </Link>
               </div>
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
-
 
 export default UAPS

@@ -41,7 +41,8 @@ const getOutilsByPoste = async (req, res) => {
               cleaned["Ordre"] ||
               cleaned["Ordre "] ||
               null;
-            const commentaires_planif = cleaned["Commentaires Planif"] || null;
+         const commentaires_planif = cleaned["Commentaires Planif"] || null;
+
 
             const statutEntry = statutMap[n_ordre] || {};
 

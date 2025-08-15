@@ -35,13 +35,13 @@ import { Route as UAPSGDIMHebdomadaireRouteImport } from './routes/UAPS/G-DIM/he
 import { Route as UAPSGDIMGDIMRouteImport } from './routes/UAPS/G-DIM/G-DIM'
 import { Route as UAPSPROFILEEValidationProductionRouteImport } from './routes/UAPS/PROFILEE/Validation/production'
 import { Route as UAPSPROFILEEValidationOutillageRouteImport } from './routes/UAPS/PROFILEE/Validation/outillage'
-import { Route as UAPSPROFILEEValidationMatiChar233reRouteImport } from './routes/UAPS/PROFILEE/Validation/matiére'
+import { Route as UAPSPROFILEEValidationMatiereRouteImport } from './routes/UAPS/PROFILEE/Validation/matiere'
 import { Route as UAPSPDIMValidationProductionRouteImport } from './routes/UAPS/P-DIM/Validation/production'
 import { Route as UAPSPDIMValidationOutillageRouteImport } from './routes/UAPS/P-DIM/Validation/outillage'
-import { Route as UAPSPDIMValidationMatiChar233reRouteImport } from './routes/UAPS/P-DIM/Validation/matiére'
+import { Route as UAPSPDIMValidationMatiereRouteImport } from './routes/UAPS/P-DIM/Validation/matiere'
 import { Route as UAPSGDIMValidationProductionRouteImport } from './routes/UAPS/G-DIM/Validation/production'
 import { Route as UAPSGDIMValidationOutillageRouteImport } from './routes/UAPS/G-DIM/Validation/outillage'
-import { Route as UAPSGDIMValidationMatiChar233reRouteImport } from './routes/UAPS/G-DIM/Validation/matiére'
+import { Route as UAPSGDIMValidationMatiereRouteImport } from './routes/UAPS/G-DIM/Validation/matiere'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -176,10 +176,10 @@ const UAPSPROFILEEValidationOutillageRoute =
     path: '/UAPS/PROFILEE/Validation/outillage',
     getParentRoute: () => rootRouteImport,
   } as any)
-const UAPSPROFILEEValidationMatiChar233reRoute =
-  UAPSPROFILEEValidationMatiChar233reRouteImport.update({
-    id: '/UAPS/PROFILEE/Validation/matiére',
-    path: '/UAPS/PROFILEE/Validation/matiére',
+const UAPSPROFILEEValidationMatiereRoute =
+  UAPSPROFILEEValidationMatiereRouteImport.update({
+    id: '/UAPS/PROFILEE/Validation/matiere',
+    path: '/UAPS/PROFILEE/Validation/matiere',
     getParentRoute: () => rootRouteImport,
   } as any)
 const UAPSPDIMValidationProductionRoute =
@@ -194,10 +194,10 @@ const UAPSPDIMValidationOutillageRoute =
     path: '/UAPS/P-DIM/Validation/outillage',
     getParentRoute: () => rootRouteImport,
   } as any)
-const UAPSPDIMValidationMatiChar233reRoute =
-  UAPSPDIMValidationMatiChar233reRouteImport.update({
-    id: '/UAPS/P-DIM/Validation/matiére',
-    path: '/UAPS/P-DIM/Validation/matiére',
+const UAPSPDIMValidationMatiereRoute =
+  UAPSPDIMValidationMatiereRouteImport.update({
+    id: '/UAPS/P-DIM/Validation/matiere',
+    path: '/UAPS/P-DIM/Validation/matiere',
     getParentRoute: () => rootRouteImport,
   } as any)
 const UAPSGDIMValidationProductionRoute =
@@ -212,10 +212,10 @@ const UAPSGDIMValidationOutillageRoute =
     path: '/UAPS/G-DIM/Validation/outillage',
     getParentRoute: () => rootRouteImport,
   } as any)
-const UAPSGDIMValidationMatiChar233reRoute =
-  UAPSGDIMValidationMatiChar233reRouteImport.update({
-    id: '/UAPS/G-DIM/Validation/matiére',
-    path: '/UAPS/G-DIM/Validation/matiére',
+const UAPSGDIMValidationMatiereRoute =
+  UAPSGDIMValidationMatiereRouteImport.update({
+    id: '/UAPS/G-DIM/Validation/matiere',
+    path: '/UAPS/G-DIM/Validation/matiere',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -244,13 +244,13 @@ export interface FileRoutesByFullPath {
   '/UAPS/PROFILEE/journalier': typeof UAPSPROFILEEJournalierRoute
   '/UAPS/PROFILEE/modifier': typeof UAPSPROFILEEModifierRoute
   '/UAPS/PROFILEE/suivre': typeof UAPSPROFILEESuivreRoute
-  '/UAPS/G-DIM/Validation/matiére': typeof UAPSGDIMValidationMatiChar233reRoute
+  '/UAPS/G-DIM/Validation/matiere': typeof UAPSGDIMValidationMatiereRoute
   '/UAPS/G-DIM/Validation/outillage': typeof UAPSGDIMValidationOutillageRoute
   '/UAPS/G-DIM/Validation/production': typeof UAPSGDIMValidationProductionRoute
-  '/UAPS/P-DIM/Validation/matiére': typeof UAPSPDIMValidationMatiChar233reRoute
+  '/UAPS/P-DIM/Validation/matiere': typeof UAPSPDIMValidationMatiereRoute
   '/UAPS/P-DIM/Validation/outillage': typeof UAPSPDIMValidationOutillageRoute
   '/UAPS/P-DIM/Validation/production': typeof UAPSPDIMValidationProductionRoute
-  '/UAPS/PROFILEE/Validation/matiére': typeof UAPSPROFILEEValidationMatiChar233reRoute
+  '/UAPS/PROFILEE/Validation/matiere': typeof UAPSPROFILEEValidationMatiereRoute
   '/UAPS/PROFILEE/Validation/outillage': typeof UAPSPROFILEEValidationOutillageRoute
   '/UAPS/PROFILEE/Validation/production': typeof UAPSPROFILEEValidationProductionRoute
 }
@@ -279,13 +279,13 @@ export interface FileRoutesByTo {
   '/UAPS/PROFILEE/journalier': typeof UAPSPROFILEEJournalierRoute
   '/UAPS/PROFILEE/modifier': typeof UAPSPROFILEEModifierRoute
   '/UAPS/PROFILEE/suivre': typeof UAPSPROFILEESuivreRoute
-  '/UAPS/G-DIM/Validation/matiére': typeof UAPSGDIMValidationMatiChar233reRoute
+  '/UAPS/G-DIM/Validation/matiere': typeof UAPSGDIMValidationMatiereRoute
   '/UAPS/G-DIM/Validation/outillage': typeof UAPSGDIMValidationOutillageRoute
   '/UAPS/G-DIM/Validation/production': typeof UAPSGDIMValidationProductionRoute
-  '/UAPS/P-DIM/Validation/matiére': typeof UAPSPDIMValidationMatiChar233reRoute
+  '/UAPS/P-DIM/Validation/matiere': typeof UAPSPDIMValidationMatiereRoute
   '/UAPS/P-DIM/Validation/outillage': typeof UAPSPDIMValidationOutillageRoute
   '/UAPS/P-DIM/Validation/production': typeof UAPSPDIMValidationProductionRoute
-  '/UAPS/PROFILEE/Validation/matiére': typeof UAPSPROFILEEValidationMatiChar233reRoute
+  '/UAPS/PROFILEE/Validation/matiere': typeof UAPSPROFILEEValidationMatiereRoute
   '/UAPS/PROFILEE/Validation/outillage': typeof UAPSPROFILEEValidationOutillageRoute
   '/UAPS/PROFILEE/Validation/production': typeof UAPSPROFILEEValidationProductionRoute
 }
@@ -315,13 +315,13 @@ export interface FileRoutesById {
   '/UAPS/PROFILEE/journalier': typeof UAPSPROFILEEJournalierRoute
   '/UAPS/PROFILEE/modifier': typeof UAPSPROFILEEModifierRoute
   '/UAPS/PROFILEE/suivre': typeof UAPSPROFILEESuivreRoute
-  '/UAPS/G-DIM/Validation/matiére': typeof UAPSGDIMValidationMatiChar233reRoute
+  '/UAPS/G-DIM/Validation/matiere': typeof UAPSGDIMValidationMatiereRoute
   '/UAPS/G-DIM/Validation/outillage': typeof UAPSGDIMValidationOutillageRoute
   '/UAPS/G-DIM/Validation/production': typeof UAPSGDIMValidationProductionRoute
-  '/UAPS/P-DIM/Validation/matiére': typeof UAPSPDIMValidationMatiChar233reRoute
+  '/UAPS/P-DIM/Validation/matiere': typeof UAPSPDIMValidationMatiereRoute
   '/UAPS/P-DIM/Validation/outillage': typeof UAPSPDIMValidationOutillageRoute
   '/UAPS/P-DIM/Validation/production': typeof UAPSPDIMValidationProductionRoute
-  '/UAPS/PROFILEE/Validation/matiére': typeof UAPSPROFILEEValidationMatiChar233reRoute
+  '/UAPS/PROFILEE/Validation/matiere': typeof UAPSPROFILEEValidationMatiereRoute
   '/UAPS/PROFILEE/Validation/outillage': typeof UAPSPROFILEEValidationOutillageRoute
   '/UAPS/PROFILEE/Validation/production': typeof UAPSPROFILEEValidationProductionRoute
 }
@@ -352,13 +352,13 @@ export interface FileRouteTypes {
     | '/UAPS/PROFILEE/journalier'
     | '/UAPS/PROFILEE/modifier'
     | '/UAPS/PROFILEE/suivre'
-    | '/UAPS/G-DIM/Validation/matiére'
+    | '/UAPS/G-DIM/Validation/matiere'
     | '/UAPS/G-DIM/Validation/outillage'
     | '/UAPS/G-DIM/Validation/production'
-    | '/UAPS/P-DIM/Validation/matiére'
+    | '/UAPS/P-DIM/Validation/matiere'
     | '/UAPS/P-DIM/Validation/outillage'
     | '/UAPS/P-DIM/Validation/production'
-    | '/UAPS/PROFILEE/Validation/matiére'
+    | '/UAPS/PROFILEE/Validation/matiere'
     | '/UAPS/PROFILEE/Validation/outillage'
     | '/UAPS/PROFILEE/Validation/production'
   fileRoutesByTo: FileRoutesByTo
@@ -387,13 +387,13 @@ export interface FileRouteTypes {
     | '/UAPS/PROFILEE/journalier'
     | '/UAPS/PROFILEE/modifier'
     | '/UAPS/PROFILEE/suivre'
-    | '/UAPS/G-DIM/Validation/matiére'
+    | '/UAPS/G-DIM/Validation/matiere'
     | '/UAPS/G-DIM/Validation/outillage'
     | '/UAPS/G-DIM/Validation/production'
-    | '/UAPS/P-DIM/Validation/matiére'
+    | '/UAPS/P-DIM/Validation/matiere'
     | '/UAPS/P-DIM/Validation/outillage'
     | '/UAPS/P-DIM/Validation/production'
-    | '/UAPS/PROFILEE/Validation/matiére'
+    | '/UAPS/PROFILEE/Validation/matiere'
     | '/UAPS/PROFILEE/Validation/outillage'
     | '/UAPS/PROFILEE/Validation/production'
   id:
@@ -422,13 +422,13 @@ export interface FileRouteTypes {
     | '/UAPS/PROFILEE/journalier'
     | '/UAPS/PROFILEE/modifier'
     | '/UAPS/PROFILEE/suivre'
-    | '/UAPS/G-DIM/Validation/matiére'
+    | '/UAPS/G-DIM/Validation/matiere'
     | '/UAPS/G-DIM/Validation/outillage'
     | '/UAPS/G-DIM/Validation/production'
-    | '/UAPS/P-DIM/Validation/matiére'
+    | '/UAPS/P-DIM/Validation/matiere'
     | '/UAPS/P-DIM/Validation/outillage'
     | '/UAPS/P-DIM/Validation/production'
-    | '/UAPS/PROFILEE/Validation/matiére'
+    | '/UAPS/PROFILEE/Validation/matiere'
     | '/UAPS/PROFILEE/Validation/outillage'
     | '/UAPS/PROFILEE/Validation/production'
   fileRoutesById: FileRoutesById
@@ -458,13 +458,13 @@ export interface RootRouteChildren {
   UAPSPROFILEEJournalierRoute: typeof UAPSPROFILEEJournalierRoute
   UAPSPROFILEEModifierRoute: typeof UAPSPROFILEEModifierRoute
   UAPSPROFILEESuivreRoute: typeof UAPSPROFILEESuivreRoute
-  UAPSGDIMValidationMatiChar233reRoute: typeof UAPSGDIMValidationMatiChar233reRoute
+  UAPSGDIMValidationMatiereRoute: typeof UAPSGDIMValidationMatiereRoute
   UAPSGDIMValidationOutillageRoute: typeof UAPSGDIMValidationOutillageRoute
   UAPSGDIMValidationProductionRoute: typeof UAPSGDIMValidationProductionRoute
-  UAPSPDIMValidationMatiChar233reRoute: typeof UAPSPDIMValidationMatiChar233reRoute
+  UAPSPDIMValidationMatiereRoute: typeof UAPSPDIMValidationMatiereRoute
   UAPSPDIMValidationOutillageRoute: typeof UAPSPDIMValidationOutillageRoute
   UAPSPDIMValidationProductionRoute: typeof UAPSPDIMValidationProductionRoute
-  UAPSPROFILEEValidationMatiChar233reRoute: typeof UAPSPROFILEEValidationMatiChar233reRoute
+  UAPSPROFILEEValidationMatiereRoute: typeof UAPSPROFILEEValidationMatiereRoute
   UAPSPROFILEEValidationOutillageRoute: typeof UAPSPROFILEEValidationOutillageRoute
   UAPSPROFILEEValidationProductionRoute: typeof UAPSPROFILEEValidationProductionRoute
 }
@@ -653,11 +653,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UAPSPROFILEEValidationOutillageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/UAPS/PROFILEE/Validation/matiére': {
-      id: '/UAPS/PROFILEE/Validation/matiére'
-      path: '/UAPS/PROFILEE/Validation/matiére'
-      fullPath: '/UAPS/PROFILEE/Validation/matiére'
-      preLoaderRoute: typeof UAPSPROFILEEValidationMatiChar233reRouteImport
+    '/UAPS/PROFILEE/Validation/matiere': {
+      id: '/UAPS/PROFILEE/Validation/matiere'
+      path: '/UAPS/PROFILEE/Validation/matiere'
+      fullPath: '/UAPS/PROFILEE/Validation/matiere'
+      preLoaderRoute: typeof UAPSPROFILEEValidationMatiereRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/UAPS/P-DIM/Validation/production': {
@@ -674,11 +674,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UAPSPDIMValidationOutillageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/UAPS/P-DIM/Validation/matiére': {
-      id: '/UAPS/P-DIM/Validation/matiére'
-      path: '/UAPS/P-DIM/Validation/matiére'
-      fullPath: '/UAPS/P-DIM/Validation/matiére'
-      preLoaderRoute: typeof UAPSPDIMValidationMatiChar233reRouteImport
+    '/UAPS/P-DIM/Validation/matiere': {
+      id: '/UAPS/P-DIM/Validation/matiere'
+      path: '/UAPS/P-DIM/Validation/matiere'
+      fullPath: '/UAPS/P-DIM/Validation/matiere'
+      preLoaderRoute: typeof UAPSPDIMValidationMatiereRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/UAPS/G-DIM/Validation/production': {
@@ -695,11 +695,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UAPSGDIMValidationOutillageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/UAPS/G-DIM/Validation/matiére': {
-      id: '/UAPS/G-DIM/Validation/matiére'
-      path: '/UAPS/G-DIM/Validation/matiére'
-      fullPath: '/UAPS/G-DIM/Validation/matiére'
-      preLoaderRoute: typeof UAPSGDIMValidationMatiChar233reRouteImport
+    '/UAPS/G-DIM/Validation/matiere': {
+      id: '/UAPS/G-DIM/Validation/matiere'
+      path: '/UAPS/G-DIM/Validation/matiere'
+      fullPath: '/UAPS/G-DIM/Validation/matiere'
+      preLoaderRoute: typeof UAPSGDIMValidationMatiereRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -730,14 +730,13 @@ const rootRouteChildren: RootRouteChildren = {
   UAPSPROFILEEJournalierRoute: UAPSPROFILEEJournalierRoute,
   UAPSPROFILEEModifierRoute: UAPSPROFILEEModifierRoute,
   UAPSPROFILEESuivreRoute: UAPSPROFILEESuivreRoute,
-  UAPSGDIMValidationMatiChar233reRoute: UAPSGDIMValidationMatiChar233reRoute,
+  UAPSGDIMValidationMatiereRoute: UAPSGDIMValidationMatiereRoute,
   UAPSGDIMValidationOutillageRoute: UAPSGDIMValidationOutillageRoute,
   UAPSGDIMValidationProductionRoute: UAPSGDIMValidationProductionRoute,
-  UAPSPDIMValidationMatiChar233reRoute: UAPSPDIMValidationMatiChar233reRoute,
+  UAPSPDIMValidationMatiereRoute: UAPSPDIMValidationMatiereRoute,
   UAPSPDIMValidationOutillageRoute: UAPSPDIMValidationOutillageRoute,
   UAPSPDIMValidationProductionRoute: UAPSPDIMValidationProductionRoute,
-  UAPSPROFILEEValidationMatiChar233reRoute:
-    UAPSPROFILEEValidationMatiChar233reRoute,
+  UAPSPROFILEEValidationMatiereRoute: UAPSPROFILEEValidationMatiereRoute,
   UAPSPROFILEEValidationOutillageRoute: UAPSPROFILEEValidationOutillageRoute,
   UAPSPROFILEEValidationProductionRoute: UAPSPROFILEEValidationProductionRoute,
 }

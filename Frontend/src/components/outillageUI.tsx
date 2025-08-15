@@ -44,15 +44,33 @@ export const ToolRow = memo(function ToolRow({
   validateTool: (id: string) => void;
   reportProblem: (id: string) => void;
 }) {
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return "-";
+    }
+  };
+
   return (
     <tr>
       <td className="px-4 py-2">{tool.ordre}</td>
       <td className="px-4 py-2">{tool.n_ordre}</td>
       <td className="px-4 py-2">{tool.nom}</td>
-      <td className="px-4 py-2"><StatutBadge statut={tool.statut} /></td>
       <td className="px-4 py-2">{tool.article ?? "-"}</td>
       <td className="px-4 py-2">{tool.article_description ?? "-"}</td>
-      <td className="px-4 py-2">{tool.commentaire_planif || "-"}</td>
+      <td className="px-4 py-2">{tool.resource ?? "-"}</td>
+      <td className="px-4 py-2">{tool.commentaires_planif || "-"}</td>
+      <td className="px-4 py-2">{formatDateTime(tool.date_validation)}</td>
       <td className="px-4 py-2">
         {['pending', 'missing'].includes(tool.statut) && (
           <div className="flex gap-3">
@@ -61,6 +79,7 @@ export const ToolRow = memo(function ToolRow({
           </div>
         )}
       </td>
+      <td className="px-4 py-2"><StatutBadge statut={tool.statut} /></td>
     </tr>
   );
 });
@@ -81,11 +100,13 @@ export const ToolTable = memo(function ToolTable({
           <th className="px-4 py-2">Ordre</th>
           <th className="px-4 py-2">N° Ordre</th>
           <th className="px-4 py-2">Outil</th>
-          <th className="px-4 py-2">Statut</th>
           <th className="px-4 py-2">Article</th>
           <th className="px-4 py-2">Description Article</th>
+          <th className="px-4 py-2">Resource</th>
           <th className="px-4 py-2">Commentaires Planif</th>
+          <th className="px-4 py-2">Date de validation</th>
           <th className="px-4 py-2">Actions</th>
+          <th className="px-4 py-2">Statut</th>
         </tr>
       </thead>
       <tbody>

@@ -24,7 +24,9 @@ export function PlanningImporter({ apiBase, NavigationMenu, PosteSelection }: Pr
   const [headers, setHeaders] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
   const [resource, setResource] = useState<string | null>(null);
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [importDate, setImportDate] = useState<string | null>(null);
+
   const [success, setSuccess] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [planningToSave, setPlanningToSave] = useState<{
@@ -39,6 +41,8 @@ export function PlanningImporter({ apiBase, NavigationMenu, PosteSelection }: Pr
     setData([]); setHeaders([]); setFileName(null);
     setSortConfig(null); setResource(null); setError(null); setSuccess(null); setPlanningToSave(null);
     try {
+      // IMPORTANT: This endpoint returns ONLY original imported data, never modifications
+      // This ensures the import page always shows the original data
       const res = await fetch(`http://localhost:5000/api/${apiBase}/planning/${newPoste}`);
       if (!res.ok) return;
       const planning = await res.json();
@@ -53,21 +57,26 @@ export function PlanningImporter({ apiBase, NavigationMenu, PosteSelection }: Pr
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e?.target?.files?.[0];
-    if (!poste || !file) return;
-    setFileName(file.name);
-    try {
-      const { data: parsed, headers } = await readExcelFile(file);
-      setHeaders(headers);
-      setData(parsed);
-      setSortConfig(null);
-      setResource(null);
-      setPlanningToSave({ poste, fileName: file.name, data: parsed });
-    } catch {
-      setError("Erreur de lecture du fichier.");
-    }
-  };
+const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e?.target?.files?.[0];
+  if (!poste || !file) return;
+
+  setFileName(file.name);
+  setImportDate(new Date().toLocaleString()); // Ajout date import
+
+  try {
+    const { data: parsed, headers } = await readExcelFile(file);
+    setHeaders(headers);
+    setData(parsed);
+    setSortConfig(null);
+    setResource(null);
+    setPlanningToSave({ poste, fileName: file.name, data: parsed });
+  } catch {
+    setError("Erreur de lecture du fichier.");
+  }
+};
+
+
 
   const handleSavePlanning = async () => {
     if (!planningToSave) return;
@@ -131,7 +140,12 @@ export function PlanningImporter({ apiBase, NavigationMenu, PosteSelection }: Pr
     <div className="flex flex-col min-h-screen bg-white">
       <NavigationMenu />
       <div className="flex-1 p-8">
-        <h1 className="text-2xl font-bold mb-6 text-black">Importer le planning</h1>
+        <h1 className="text-2xl font-bold mb-6 text-black">
+          Importer le planning
+          <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md font-normal">
+            Données originales uniquement
+          </span>
+        </h1>
         <PosteSelection selectedPoste={poste} onSelect={handlePosteChange} />
 
         {poste && !headers.length && (
@@ -140,7 +154,30 @@ export function PlanningImporter({ apiBase, NavigationMenu, PosteSelection }: Pr
 
         {headers.length > 0 && (
           <>
-            <div className="flex items-center mb-4 gap-4">
+           {fileName && (
+      <p className="mb-2 text-gray-700 font-semibold">
+        Fichier importé : <strong>{fileName}</strong>
+      </p>
+    )}
+    {importDate && (
+      <p className="mb-4 text-gray-500 text-sm">
+        Date d'import : {importDate}
+      </p>
+    )}
+
+           {/* Error and Success Messages */}
+           {error && (
+             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+               {error}
+             </div>
+           )}
+           {success && (
+             <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+               {success}
+             </div>
+           )}
+
+           <div className="flex items-center mb-4 gap-4">
               <input
                 type="text"
                 value={search}
@@ -153,7 +190,7 @@ export function PlanningImporter({ apiBase, NavigationMenu, PosteSelection }: Pr
               <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
                 <div>
                   <h2 className="text-xl font-semibold">Planning pour <span className="text-[#ef8f0e]">{poste}</span></h2>
-                  <div className="text-sm text-gray-600">Fichier chargé : <span className="font-medium">{fileName}</span></div>
+                 
                 </div>
               </div>
               <ResourceButtons

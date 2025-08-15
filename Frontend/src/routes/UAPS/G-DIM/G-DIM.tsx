@@ -5,7 +5,7 @@ import { EditableTable } from '@/components/EditableTable';
 import { RuptureTable, type RuptureData } from '@/components/RuptureTable';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   usePlanningManager,
   exportToExcel
@@ -55,8 +55,8 @@ const newRuptureRow: RuptureData = {
 
 function TablesComponent() {
   const {
-    productionData, ruptureData, weekNumber, loading,
-    setWeekNumber, fetchPlanning, fetchLastPlanning,
+    productionData, ruptureData, weekNumber, availableWeeks, loading,
+    setWeekNumber, fetchPlanning, fetchLastPlanning, fetchAvailableWeeks, addWeekToAvailable, clearTableData,
     handleProdCellChange, handleRuptureChange, handleRuptureDateChange,
     handleRemoveRupture, handleAddRuptureRow, saveToBackend, isSaveDisabled
   } = usePlanningManager<ProductionRow, RuptureData>({
@@ -65,13 +65,64 @@ function TablesComponent() {
     apiBase: 'gdim'
   });
 
-  useEffect(() => { fetchLastPlanning(); }, []);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newWeekInput, setNewWeekInput] = useState('');
 
-  const handleWeekNumberChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setWeekNumber(e.target.value);
+  // Charger le dernier planning et les semaines disponibles au montage
+  useEffect(() => {
+    fetchLastPlanning();
+    fetchAvailableWeeks();
+  }, []);
 
-  const handleWeekNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") fetchPlanning(e.currentTarget.value);
+  // Handlers UI
+  const handleWeekSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    
+    if (selectedValue === 'new') {
+      setIsCreatingNew(true);
+      setNewWeekInput('');
+      clearTableData();
+      setWeekNumber('');
+    } else if (selectedValue) {
+      setIsCreatingNew(false);
+      setWeekNumber(selectedValue);
+      fetchPlanning(selectedValue);
+    }
+  };
+
+  const handleNewWeekSubmit = () => {
+    if (newWeekInput.trim()) {
+      const newWeek = newWeekInput.trim();
+      console.log('Creating new week:', newWeek); // Debug log
+      
+      // Add the new week to available weeks list first
+      addWeekToAvailable(newWeek);
+      
+      // Then set the week number and clear data
+      setWeekNumber(newWeek);
+      clearTableData();
+      
+      // Reset the form state
+      setIsCreatingNew(false);
+      setNewWeekInput('');
+    }
+  };
+
+  const handleNewWeekKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleNewWeekSubmit();
+    } else if (e.key === "Escape") {
+      setIsCreatingNew(false);
+      setNewWeekInput('');
+    }
+  };
+
+  const handleCancelNewWeek = () => {
+    setIsCreatingNew(false);
+    setNewWeekInput('');
+    // Reset select to current week or empty
+    // The select will show the current weekNumber value
   };
 
   const handleExport = () => {
@@ -93,12 +144,7 @@ function TablesComponent() {
         "MIN03": row["MIN03"] || "-",
       }),
       ruptureMap: (r: RuptureData) => ({
-        Article: r.article,
-        Quantité: r.quantite,
-        Priorité: r.priorite,
-        Criticité: r.criticite,
-        "Date Réception": r.reception,
-        Commentaire: r.commentaire,
+        Article: r.article, Quantité: r.quantite, Priorité: r.priorite, Criticité: r.criticite, "Date Réception": r.reception, Commentaire: r.commentaire
       }),
     });
   };
@@ -107,17 +153,49 @@ function TablesComponent() {
     <div className="space-y-8">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">
-          <label htmlFor="weekNumber" className="text-lg font-medium">N°.sem:</label>
-          <input
-            id="weekNumber"
-            type="text"
-            value={weekNumber}
-            onChange={handleWeekNumberChange}
-            onKeyDown={handleWeekNumberKeyDown}
-            className="w-28 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-400"
-            placeholder="2025-S29"
-            disabled={loading}
-          />
+          <label htmlFor="weekSelect" className="text-lg font-medium">N°.sem:</label>
+          {isCreatingNew ? (
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={newWeekInput}
+                onChange={(e) => setNewWeekInput(e.target.value)}
+                onKeyDown={handleNewWeekKeyDown}
+                className="w-32 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-400"
+                placeholder="2025-S29"
+                autoFocus
+              />
+              <Button
+                onClick={handleNewWeekSubmit}
+                size="sm"
+                className="bg-green-600 text-white"
+                disabled={!newWeekInput.trim()}
+              >
+                OK
+              </Button>
+              <Button
+                onClick={handleCancelNewWeek}
+                size="sm"
+                variant="outline"
+              >
+                Annuler
+              </Button>
+            </div>
+          ) : (
+            <select
+              id="weekSelect"
+              value={weekNumber}
+              onChange={handleWeekSelection}
+              className="w-40 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-400"
+              disabled={loading}
+            >
+              <option value="">-- Sélectionner une semaine --</option>
+              {availableWeeks.map(week => (
+                <option key={week} value={week}>{week}</option>
+              ))}
+              <option value="new">+ Nouvelle semaine</option>
+            </select>
+          )}
         </div>
         <div className="flex space-x-3">
           <Button onClick={saveToBackend} disabled={isSaveDisabled} className="bg-blue-600 text-white">
