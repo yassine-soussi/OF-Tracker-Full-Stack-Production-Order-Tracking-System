@@ -5,7 +5,7 @@ import { memo } from 'react';
 export const STATUTS = {
   pending: { color: 'bg-yellow-100 text-yellow-800', label: 'En attente' },
   ready: { color: 'bg-green-100 text-green-800', label: 'Validé' },
-  started: { color: 'bg-blue-200 text-blue-900', label: 'Débuté' },
+  started: { color: 'bg-yellow-200 text-yellow-900', label: 'Débuté' },
   missing: { color: 'bg-red-100 text-red-800', label: 'Signalé' },
   closed: { color: 'bg-blue-100 text-blue-800', label: 'Clôturé' },
 };
