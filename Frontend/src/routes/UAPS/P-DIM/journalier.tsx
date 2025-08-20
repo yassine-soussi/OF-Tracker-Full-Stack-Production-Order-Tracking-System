@@ -16,6 +16,9 @@ type CombinedSignal = {
   n_ordre?: string;
   cause: string;
   detaille: string;
+  statut_of?: "pending" | "ready" | "started" | "missing" | "closed";
+  statut_outil?: "pending" | "ready" | "missing";
+  statut_matiere?: "pending" | "ready" | "missing";
 };
 
 type ImportedData = {
@@ -113,13 +116,13 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
               <th className="px-4 py-3 text-left text-sm font-bold">N° Ordre</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Cause</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Détail</th>
-             
+              <th className="px-4 py-3 text-left text-sm font-bold">Résolu</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {ofSignales.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center py-4 text-gray-400">Aucun signalement OF</td>
+                <td colSpan={5} className="text-center py-4 text-gray-400">Aucun signalement OF</td>
               </tr>
             ) : (
               ofSignales.map((row, idx) => (
@@ -131,6 +134,7 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.n_ordre || "-"}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.cause}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.detaille}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.statut_of === "closed" ? "oui" : "non"}</td>
                 </tr>
               ))
             )}
@@ -149,12 +153,13 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
               <th className="px-4 py-3 text-left text-sm font-bold">N° Ordre</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Cause</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Détail</th>
+              <th className="px-4 py-3 text-left text-sm font-bold">Résolu</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {outilsSignales.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center py-4 text-gray-400">Aucun signalement outil</td>
+                <td colSpan={5} className="text-center py-4 text-gray-400">Aucun signalement outil</td>
               </tr>
             ) : (
               outilsSignales.map((row, idx) => (
@@ -166,6 +171,7 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.n_ordre || "-"}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.cause}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.detaille}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.statut_outil === "ready" ? "oui" : "non"}</td>
                 </tr>
               ))
             )}
@@ -184,12 +190,13 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
               <th className="px-4 py-3 text-left text-sm font-bold">N° Ordre</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Cause</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Détail</th>
+              <th className="px-4 py-3 text-left text-sm font-bold">Résolu</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {matiereSignalees.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center py-4 text-gray-400">Aucun signalement matière</td>
+                <td colSpan={5} className="text-center py-4 text-gray-400">Aucun signalement matière</td>
               </tr>
             ) : (
               matiereSignalees.map((row, idx) => (
@@ -201,6 +208,7 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.n_ordre || "-"}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.cause}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.detaille}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{row.statut_matiere === "ready" ? "oui" : "non"}</td>
                 </tr>
               ))
             )}
@@ -281,6 +289,7 @@ function RouteComponent() {
         "N° Ordre": row.n_ordre || "",
         Cause: row.cause,
         Détail: row.detaille,
+        Résolu: row.statut_matiere === "ready" ? "oui" : "non",
       }));
       const wsOF = XLSX.utils.json_to_sheet(ofRows);
       XLSX.utils.book_append_sheet(wb, wsOF, "OF signalés");
@@ -294,6 +303,7 @@ function RouteComponent() {
         "N° Ordre": row.n_ordre || "",
         Cause: row.cause,
         Détail: row.detaille,
+        Résolu: row.statut_outil === "ready" ? "oui" : "non",
       }));
       const wsOutils = XLSX.utils.json_to_sheet(outilsRows);
       XLSX.utils.book_append_sheet(wb, wsOutils, "Outils signalés");
@@ -307,6 +317,7 @@ function RouteComponent() {
         "N° Ordre": row.n_ordre || "",
         Cause: row.cause,
         Détail: row.detaille,
+        Résolu: row.statut_of === "closed" ? "oui" : "non",
       }));
       const wsMatiere = XLSX.utils.json_to_sheet(matiereRows);
       XLSX.utils.book_append_sheet(wb, wsMatiere, "Matières signalées");

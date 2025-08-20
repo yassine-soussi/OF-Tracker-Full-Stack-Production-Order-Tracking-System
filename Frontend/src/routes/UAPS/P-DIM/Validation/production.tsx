@@ -3,12 +3,11 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import {
   PosteSelection,
-  ProductionTable,
   ProblemFormModal,
   StatutBadge,
 } from '@/components/productionUI'
-
- 
+// We keep the custom table defined in this file, but if you switch back to your original ProductionTable, wire the same handlers.
+import BarcodeScannerModal from '@/components/BarcodeScannerModal'
 
 type OF = {
   id: string
@@ -26,10 +25,10 @@ type OF = {
   date_lancement?: string
 }
 
-// Custom ProductionRow component that uses auto_statut_of when available
-const ProductionRowWithAutoStatus = ({ of, validateOF, reportProblem }: {
+// ===== Row with auto status + scan-triggered close =====
+const ProductionRowWithAutoStatus = ({ of, onCloturer, reportProblem }: {
   of: OF;
-  validateOF: (id: string) => void;
+  onCloturer: (id: string) => void;
   reportProblem: (id: string) => void;
 }) => {
   const formatDate = (dateString: string | null) => {
@@ -49,9 +48,7 @@ const ProductionRowWithAutoStatus = ({ of, validateOF, reportProblem }: {
     }
   };
 
-  // Use auto_statut_of if available, otherwise use statut_of
   const displayStatus = of.auto_statut_of || of.statut_of;
-  // Can validate if should be started (matiere and outil ready) OR already started, even if reported. Only prevent if already closed.
   const shouldBeStarted = of.statut_matiere === 'ready' && of.statut_outil === 'ready';
   const canValidate = (displayStatus === 'started' || shouldBeStarted) && of.statut_of !== 'closed';
 
@@ -71,7 +68,7 @@ const ProductionRowWithAutoStatus = ({ of, validateOF, reportProblem }: {
         {displayStatus !== 'closed' && (
           <div className="flex gap-3">
             <button
-              onClick={() => validateOF(of.id)}
+              onClick={() => onCloturer(of.id)}
               className={`hover:underline ${canValidate ? 'text-green-600' : 'text-gray-400 cursor-not-allowed'}`}
               disabled={!canValidate}
               type="button"
@@ -88,14 +85,14 @@ const ProductionRowWithAutoStatus = ({ of, validateOF, reportProblem }: {
   );
 };
 
-// Custom ProductionTable component that uses auto_statut_of
+// ===== Table wrapper =====
 const ProductionTableWithAutoStatus = ({
   ofs,
-  validateOF,
+  onCloturer,
   reportProblem,
 }: {
   ofs: OF[];
-  validateOF: (id: string) => void;
+  onCloturer: (id: string) => void;
   reportProblem: (id: string) => void;
 }) => {
   return (
@@ -117,7 +114,7 @@ const ProductionTableWithAutoStatus = ({
       </thead>
       <tbody>
         {ofs.map(of => (
-          <ProductionRowWithAutoStatus key={of.id} of={of} validateOF={validateOF} reportProblem={reportProblem} />
+          <ProductionRowWithAutoStatus key={of.id} of={of} onCloturer={onCloturer} reportProblem={reportProblem} />
         ))}
       </tbody>
     </table>
@@ -134,10 +131,14 @@ export function ValidationProduction() {
   const [details, setDetails] = useState('')
   const [selectedRessource, setSelectedRessource] = useState<string | null>(null)
   const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
-  const savingStatusRef = useRef<Set<string>>(new Set()) // Track which OFs are being saved
+  const savingStatusRef = useRef<Set<string>>(new Set())
   const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"]
 
-  // Function to save OF status to backend with calculated date_lancement
+  // [SCAN] which OF are we closing + last scanned (optional)
+  const [scannerForId, setScannerForId] = useState<string | null>(null)
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null)
+
+  // --- Save OF 'started' status to backend (unchanged) ---
   const saveOFStatusToBackend = useCallback(async (of: OF, newStatus: 'started') => {
     if (!poste || savingStatusRef.current.has(of.id)) return
     
@@ -154,8 +155,6 @@ export function ValidationProduction() {
       })
       
       if (response.ok) {
-        console.log(`OF ${of.n_ordre} status saved to backend: ${newStatus} with calculated date_lancement`)
-        // Trigger a refresh to get the updated data with persisted date_lancement
         setRefreshKey(k => k + 1)
       } else {
         console.error('Failed to save OF status to backend:', response.statusText)
@@ -167,33 +166,23 @@ export function ValidationProduction() {
     }
   }, [poste])
 
-  // Function to calculate automatic OF status based on conditions
+  // --- Auto status logic (unchanged) ---
   const calculateAutoOFStatus = useCallback((ofsList: OF[], selectedResource?: string | null) => {
     const updatedOFs = ofsList.map(of => {
-      // Apply logic to ALL OFs, not just selected resource
-      // Simple logic for ALL OFs: if both matiere and outil are 'ready', set OF status to 'started' (Débuté)
       if (of.statut_matiere === 'ready' && of.statut_outil === 'ready' && of.statut_of === 'pending') {
-        // Save to backend if not already started - backend will calculate date_lancement
         if (of.auto_statut_of !== 'started') {
           setTimeout(() => saveOFStatusToBackend(of, 'started'), 0)
         }
-        return {
-          ...of,
-          auto_statut_of: 'started' as const,
-        }
-      }
-      // If either matiere or outil is not ready, set to pending
-      else if (of.statut_matiere !== 'ready' || of.statut_outil !== 'ready') {
+        return { ...of, auto_statut_of: 'started' as const }
+      } else if (of.statut_matiere !== 'ready' || of.statut_outil !== 'ready') {
         return { ...of, auto_statut_of: 'pending' as const }
       }
-
       return of
     })
-
     return updatedOFs
   }, [saveOFStatusToBackend])
 
-  // Cleanup timers on component unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       timersRef.current.forEach(timer => clearTimeout(timer))
@@ -201,7 +190,6 @@ export function ValidationProduction() {
     }
   }, [])
 
-  // Effect to recalculate automatic status when selectedRessource changes
   useEffect(() => {
     if (ofs.length > 0) {
       const updatedOfs = calculateAutoOFStatus(ofs, selectedRessource)
@@ -209,63 +197,40 @@ export function ValidationProduction() {
     }
   }, [selectedRessource, calculateAutoOFStatus])
 
-  // Effect to recalculate automatic status when OF statuses change
   useEffect(() => {
     if (ofs.length > 0) {
       const updatedOfs = calculateAutoOFStatus(ofs)
-      // Check if there are actual changes to avoid infinite loops
       const hasChanges = updatedOfs.some((updatedOF, index) =>
         updatedOF.auto_statut_of !== ofs[index]?.auto_statut_of
       )
-      if (hasChanges) {
-        setOfs(updatedOfs)
-      }
+      if (hasChanges) setOfs(updatedOfs)
     }
   }, [ofs.map(of => `${of.id}-${of.statut_matiere}-${of.statut_outil}-${of.statut_of}`).join(','), calculateAutoOFStatus])
 
+  // --- Fetch & overlay ---
   useEffect(() => {
     if (!poste) {
-      console.log('No poste selected, clearing ofs')
       setOfs([])
       return
     }
-    
-    console.log('Fetching data for poste:', poste)
-    
-    // Fetch latest planning data (modifications if available, otherwise original)
     const fetchData = async () => {
       try {
         const planningResponse = await fetch(`http://localhost:5000/api/pdim/planning/${poste}/edit`)
-        if (!planningResponse.ok) {
-          throw new Error('No planning found')
-        }
-        
+        if (!planningResponse.ok) throw new Error('No planning found')
         const planningData = await planningResponse.json()
-        console.log('Planning data received:', planningData)
-        
-        // Extract production data from planning
         const planningItems = Array.isArray(planningData.data) ? planningData.data : []
-        console.log('Planning items count:', planningItems.length)
-        
+
         if (planningItems.length === 0) {
-          console.log('No planning items found, setting empty array')
-          setOfs([])
-          return
+          setOfs([]); return
         }
-        
         const mapped = planningItems
-          .filter((item: any) => {
-            const hasNOrdre = item.n_ordre || item.N_ordre || item.n_Ordre || item['N° ordre'] || item['N° Ordre'] || item['n° ordre']
-            return hasNOrdre
-          })
+          .filter((item: any) => item.n_ordre || item.N_ordre || item.n_Ordre || item['N° ordre'] || item['N° Ordre'] || item['n° ordre'])
           .map((item: any) => {
-            // Try different possible column names
             const n_ordre = item.n_ordre || item.N_ordre || item.n_Ordre || item['N° ordre'] || item['N° Ordre'] || item['n° ordre'] || ""
             const ordre = item.ordre || item.Ordre || item.ORDER || item['Ordre '] || ""
             const ressource = item.ressource || item.Ressource || item.RESSOURCE || ""
             const duree = item.duree || item['Heures '] || item['Heures'] || item.heures || ""
             const commentaires = item.commentaires_planif || item['Commentaires Planif'] || item.commentaires || item.Commentaires || ""
-            
             return {
               id: `${poste}-${n_ordre}`,
               ordre: String(ordre),
@@ -278,22 +243,13 @@ export function ValidationProduction() {
               commentaires_planif: commentaires || '',
             }
           })
-        
-        console.log('Mapped OFs count:', mapped.length)
-        console.log('First mapped item:', mapped[0])
-        
-        // Set the initial data first
+
         const initialOfsWithAutoStatus = calculateAutoOFStatus(mapped, selectedRessource)
         setOfs(initialOfsWithAutoStatus)
-        console.log('State updated with mapped data and initial auto status')
-        
-        // Then try to overlay status data from production endpoint
+
         try {
           const statusResponse = await fetch(`http://localhost:5000/api/pdim/production/${poste}`)
           const statusData = await statusResponse.json()
-          console.log('Status data received:', statusData)
-          console.log('Date lancement values found:', statusData.filter((item: any) => item.date_lancement).map((item: any) => ({ n_ordre: item.n_ordre, date_lancement: item.date_lancement })))
-          
           const statusMap = new Map()
           if (Array.isArray(statusData)) {
             statusData.forEach((item: any) => {
@@ -307,8 +263,6 @@ export function ValidationProduction() {
               })
             })
           }
-          
-          // Update with status overlay
           if (statusMap.size > 0) {
             const finalOfs = mapped.map((item: any) => {
               const statusInfo = statusMap.get(item.n_ordre)
@@ -322,54 +276,40 @@ export function ValidationProduction() {
                 date_lancement: statusInfo?.date_lancement || null
               }
             })
-            
-            console.log('Final OFs with status:', finalOfs)
-            console.log('OFs with date_lancement:', finalOfs.filter((of: any) => of.date_lancement).map((of: any) => ({ n_ordre: of.n_ordre, date_lancement: of.date_lancement })))
-            
-            // Apply automatic status calculation
             const ofsWithAutoStatus = calculateAutoOFStatus(finalOfs, selectedRessource)
             setOfs(ofsWithAutoStatus)
-            console.log('State updated with status overlay and auto status')
           }
         } catch (statusError) {
           console.log('Status fetch failed, keeping planning data only:', statusError)
         }
-        
       } catch (err) {
         console.error("Erreur fetch planning :", err)
         setOfs([])
       }
     }
-    
     fetchData()
   }, [poste, refreshKey])
-  
-  // Add debug logging for state changes
-  useEffect(() => {
-    console.log('OFs state changed:', ofs.length, 'items')
-    console.log('Current ofs:', ofs)
-  }, [ofs])
 
-  const validateOF = useCallback(async (id: string) => {
+  // ====== Scan flow for “Clôturer” ======
+  const openScannerFor = useCallback((id: string) => {
+    // We can still enforce the same canValidate check here if you want a second guard
     const of = ofs.find(o => o.id === id)
-    if (!of || !poste) return
-    
-    // Check if OF can be validated: should be started (matiere and outil ready) OR already started, and not already closed
+    if (!of) return
     const currentStatus = of.auto_statut_of || of.statut_of
     const shouldBeStarted = of.statut_matiere === 'ready' && of.statut_outil === 'ready'
     const canValidateOF = (currentStatus === 'started' || shouldBeStarted) && of.statut_of !== 'closed'
-    
-    if (!canValidateOF) {
-      if (of.statut_of === 'closed') {
-        alert("Cet OF est déjà cloturé")
-      } else if (!shouldBeStarted) {
-        alert("Les matières et outils doivent être validés avant de pouvoir clôturer l'OF")
-      } else {
-        alert("Vous ne pouvez valider que les OFs en état 'Débuté'")
-      }
+    if (!canValidateOF) return
+    setScannerForId(id)
+  }, [ofs])
+
+  const confirmScannedAndClose = useCallback(async (code: string) => {
+    setLastScannedCode(code)
+    if (!scannerForId) return
+    const of = ofs.find(o => o.id === scannerForId)
+    if (!of || !poste) {
+      setScannerForId(null)
       return
     }
-    
     try {
       const res = await fetch(`http://localhost:5000/api/pdim/production/statut/${poste}/${of.n_ordre}`, {
         method: 'PUT',
@@ -378,27 +318,26 @@ export function ValidationProduction() {
           statut_of: 'closed',
           duree: of.duree,
           ordre: of.ordre,
+          // scanned_code: code // (optional in backend if you decide to persist)
         }),
       })
       if (res.ok) {
-        const json = await res.json()
-        alert(json.message)
-        setRefreshKey(k => k + 1)
+        setTimeout(() => setRefreshKey(k => k + 1), 400)
       } else {
-        // Get detailed error message from backend
         try {
           const errorData = await res.json()
-          console.error('Backend error details:', errorData)
           alert(`Échec de la clôture de l'OF: ${errorData.error || 'Erreur inconnue'}`)
         } catch {
           alert("Échec de la clôture de l'OF")
         }
       }
     } catch (err) {
-      console.error("Erreur de validation d'OF :", err)
-      alert("Une erreur est survenue lors de la validation de l'OF")
+      console.error("Erreur de clôture d'OF :", err)
+      alert("Une erreur est survenue lors de la clôture de l'OF")
+    } finally {
+      setScannerForId(null)
     }
-  }, [ofs, poste])
+  }, [scannerForId, ofs, poste])
 
   const submitProblem = useCallback(async () => {
     if (!showForm || !poste) return
@@ -445,105 +384,82 @@ export function ValidationProduction() {
     if (selectedRessource) {
       list = list.filter(o => o.ressource === selectedRessource)
     }
-    
-    // Sort by ordre column (e.g., S25-00, S25-01, S25-02...)
     list.sort((a, b) => {
       const ordreA = a.ordre || ''
       const ordreB = b.ordre || ''
-      
-      // Natural sorting for ordre values like S25-01, S25-02, etc.
       return ordreA.localeCompare(ordreB, undefined, {
         numeric: true,
         sensitivity: 'base'
       })
     })
-    
     return list
   }, [ofs, search, selectedRessource])
 
   return (
     <ProtectedRoute requiredRoute="/UAPS/P-DIM/Validation/production">
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="w-full bg-gradient-to-r from-[#ef8f0e] to-[#d47e0d] text-white shadow-[0_2px_10px_rgba(0,0,0,0.1)] border-b border-white/20 py-4 px-6 flex items-center justify-between gap-6">
-        <div className={`text-2xl font-['Raleway'] text-white [1px_1px_3px_rgba(0,0,0,0.3)] relative inline-block group rounded px-2 py-1 transition-colors duration-200 `}>
-          Validation production
-        </div>
-        <div className={`text-2xl font-['Raleway'] text-white [1px_1px_3px_rgba(0,0,0,0.3)] `}>
-          P-DIM
-        </div>
-      </header>
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <header className="w-full bg-gradient-to-r from-[#ef8f0e] to-[#d47e0d] text-white shadow-[0_2px_10px_rgba(0,0,0,0.1)] border-b border-white/20 py-4 px-6 flex items-center justify-between gap-6">
+          <div className={`text-2xl font-['Raleway'] text-white [1px_1px_3px_rgba(0,0,0,0.3)] relative inline-block group rounded px-2 py-1 transition-colors duration-200 `}>
+            Validation production
+          </div>
+          <div className={`text-2xl font-['Raleway'] text-white [1px_1px_3px_rgba(0,0,0,0.3)] `}>
+            P-DIM
+          </div>
+        </header>
 
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-6">
-          <PosteSelection poste={poste} setPoste={setPoste} postes={POSTES} />
+        <main className="flex-1 p-8">
+          <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-6">
+            <PosteSelection poste={poste} setPoste={setPoste} postes={POSTES} />
 
-          <div className="mb-4 flex flex-wrap gap-4 justify-between items-center">
-            <input
-              type="text"
-              placeholder="Recherche par N° ordre ou Ordre..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="border rounded px-3 py-2 w-64"
+            <div className="mb-4 flex flex-wrap gap-4 justify-between items-center">
+              <input
+                type="text"
+                placeholder="Recherche par N° ordre ou Ordre..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="border rounded px-3 py-2 w-64"
+              />
+            </div>
+
+            <ProductionTableWithAutoStatus
+              ofs={ofsFiltered}
+              onCloturer={openScannerFor}  // <-- opens the camera
+              reportProblem={(id) => setShowForm(id)}
             />
-          </div>
 
-          {ressourcesUniques.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-3">
-              {ressourcesUniques.map(r => (
-                <button
-                  key={r}
-                  onClick={() => setSelectedRessource(r)}
-                  className={`px-4 py-1 rounded-full border text-sm ${
-                    selectedRessource === r
-                      ? 'bg-[#ef8f0e] text-white'
-                      : 'bg-white text-gray-800 hover:bg-gray-100'
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-              {selectedRessource && (
-                <button
-                  onClick={() => setSelectedRessource(null)}
-                  className="px-4 py-1 rounded-full border text-sm bg-gray-200 text-gray-800 hover:bg-gray-300"
-                >
-                  Tous
-                </button>
-              )}
+            <div className="mt-4 text-sm text-gray-600 text-right">
+              Lignes affichées : {ofsFiltered.length}
             </div>
-          )}
 
-          <ProductionTableWithAutoStatus
-            ofs={ofsFiltered}
-            validateOF={validateOF}
-            reportProblem={(id) => setShowForm(id)}
+            {ofs.length === 0 && (
+              <div className="text-center text-gray-400 mt-4">
+                Aucune donnée trouvée pour ce poste.
+              </div>
+            )}
+          </div>
+        </main>
+
+        {showForm && (
+          <ProblemFormModal
+            problemCause={problemCause}
+            setProblemCause={setProblemCause}
+            details={details}
+            setDetails={setDetails}
+            onCancel={() => setShowForm(null)}
+            onSubmit={submitProblem}
           />
+        )}
 
-          <div className="mt-4 text-sm text-gray-600 text-right">
-            Lignes affichées : {ofsFiltered.length}
-          </div>
-
-          {ofs.length === 0 && (
-            <div className="text-center text-gray-400 mt-4">
-              Aucune donnée trouvée pour ce poste.
-            </div>
-          )}
-        </div>
-      </main>
-
-      {showForm && (
-        <ProblemFormModal
-          problemCause={problemCause}
-          setProblemCause={setProblemCause}
-          details={details}
-          setDetails={setDetails}
-          onCancel={() => setShowForm(null)}
-          onSubmit={submitProblem}
+        {/* Scanner modal for "Clôturer" */}
+        <BarcodeScannerModal
+          open={!!scannerForId}
+          onClose={() => setScannerForId(null)}
+          onConfirm={confirmScannedAndClose}
+          title="Scanner pour clôturer l'OF"
         />
-      )}
-    </div>
-  </ProtectedRoute>
-)
+      </div>
+    </ProtectedRoute>
+  )
 }
 
 export const Route = createFileRoute('/UAPS/P-DIM/Validation/production')({

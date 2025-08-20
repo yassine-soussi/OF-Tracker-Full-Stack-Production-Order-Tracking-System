@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from "react"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import { PosteSelection, SearchBar, TableRowMatiere, ProblemFormModal } from "@/components/matiereUI";
 import { ResourceButtons } from "@/components/ResourceButtons";
+// [SCAN]
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 type Matier = {
   id: string;
@@ -16,7 +18,7 @@ type Matier = {
   resource?: string | null;
   date_validation?: string | null;
 }
-  const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"];
+const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"];
 
 export function ValidationMatiere() {
   const [poste, setPoste] = useState("")
@@ -27,6 +29,11 @@ export function ValidationMatiere() {
   const [problemCause, setProblemCause] = useState("")
   const [details, setDetails] = useState("")
   const [selectedResource, setSelectedResource] = useState<string | null>(null)
+
+  // [SCAN] which matière are we validating (opens scanner)
+  const [scannerForId, setScannerForId] = useState<string | null>(null)
+  // [SCAN] keep last scanned code (optional UI/analytics)
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null)
 
   const uniqueResources = useMemo(() => {
     return Array.from(new Set(matieres.map(m => m.resource).filter(Boolean) as string[])).sort();
@@ -69,7 +76,6 @@ export function ValidationMatiere() {
             return hasNOrdre
           })
           .map((item: any) => {
-            // Try different possible column names - fix the case sensitivity
             const n_ordre = item.n_ordre || item.N_ordre || item.n_Ordre || item['N° ordre'] || item['N° Ordre'] || item['n° ordre'] || ""
             const ordre = item.ordre || item.Ordre || item.ORDER || item['Ordre '] || ""
             const article = item.article || item.Article || item.ARTICLE || ""
@@ -78,44 +84,23 @@ export function ValidationMatiere() {
             const besoin_machine_raw = item.besoin_machine || item['Besoin machine '] || item['Besoin machine'] || item.date_besoin || ""
             const commentaires = item.commentaires_planif || item['Commentaires Planif'] || item.commentaires || item.Commentaires || ""
             
-            // Parse besoin_machine with better error handling
             const parseBesoinMachine = (value: any): Date | null => {
               if (!value) return null;
-              
-              // If it's already a Date object, return it
-              if (value instanceof Date) {
-                return isNaN(value.getTime()) ? null : value;
-              }
-              
+              if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
               const str = String(value).trim();
               if (!str) return null;
-              
-              // Skip purely numeric values that don't look like dates
-              if (/^\d+$/.test(str) && str.length < 6) {
-                return null;
-              }
-              
+              if (/^\d+$/.test(str) && str.length < 6) return null;
               try {
-                // Try parsing various date formats
                 let date: Date | null = null;
-                
-                // Try DD/MM/YY or MM/DD/YY format
                 if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(str)) {
                   const parts = str.split('/');
                   if (parts.length === 3) {
                     let day = parseInt(parts[0]);
                     let month = parseInt(parts[1]);
                     let year = parseInt(parts[2]);
-                    
-                    // Handle 2-digit years
-                    if (year < 100) {
-                      year += year < 50 ? 2000 : 1900;
-                    }
-                    
-                    // Try DD/MM/YYYY first (European format)
+                    if (year < 100) year += year < 50 ? 2000 : 1900;
                     date = new Date(year, month - 1, day);
                     if (isNaN(date.getTime()) || date.getDate() !== day || date.getMonth() !== month - 1) {
-                      // Try MM/DD/YYYY (US format)
                       date = new Date(year, day - 1, month);
                       if (isNaN(date.getTime()) || date.getDate() !== month || date.getMonth() !== day - 1) {
                         date = null;
@@ -123,16 +108,11 @@ export function ValidationMatiere() {
                     }
                   }
                 } else {
-                  // Try standard Date parsing
                   date = new Date(str);
-                  if (isNaN(date.getTime())) {
-                    date = null;
-                  }
+                  if (isNaN(date.getTime())) date = null;
                 }
-                
                 return date;
-              } catch (error) {
-                console.warn('Failed to parse date:', str, error);
+              } catch {
                 return null;
               }
             };
@@ -151,43 +131,25 @@ export function ValidationMatiere() {
             }
           })
         
-        console.log('Mapped matières count:', mapped.length)
-        console.log('First mapped item:', mapped[0])
-        
-        // Set the initial data first
         setMatieres(mapped)
-        console.log('State updated with mapped data')
         
-        // Then try to overlay status data
         try {
           const statusResponse = await fetch(`http://localhost:5000/api/pdim/matiere/${poste}`)
           const statusData = await statusResponse.json()
-          console.log('Status data received:', statusData)
-          
           const statusMap = new Map()
           if (Array.isArray(statusData.matieres)) {
             statusData.matieres.forEach((m: any) => {
-              console.log('Raw status data for', m.n_ordre, ':', {
-                statut: m.statut,
-                date_validation: m.date_validation,
-                rawObject: m
-              })
               statusMap.set(String(m.n_ordre), {
                 statut: m.statut,
                 date_validation: m.date_validation
               })
             })
-            
-            console.log('StatusMap entries with date_validation:',
-              Array.from(statusMap.entries()).filter(([key, value]) => value.date_validation)
-            )
           }
           
-          // Update with status overlay
           if (statusMap.size > 0) {
             const finalMatieres = mapped.map((item: any) => {
               const statusInfo = statusMap.get(item.n_ordre)
-              const result = {
+              return {
                 ...item,
                 statut: statusInfo
                   ? (["pending", "ready", "missing"].includes(statusInfo.statut)
@@ -196,24 +158,8 @@ export function ValidationMatiere() {
                   : "pending",
                 date_validation: statusInfo?.date_validation || null
               }
-              if (result.date_validation) {
-                console.log('✅ Final matière WITH date_validation for', item.n_ordre, ':', {
-                  statut: result.statut,
-                  date_validation: result.date_validation
-                })
-              } else {
-                console.log('❌ Final matière WITHOUT date_validation for', item.n_ordre, ':', {
-                  statut: result.statut,
-                  date_validation: result.date_validation,
-                  statusInfo: statusInfo
-                })
-              }
-              return result
             })
-            
-            console.log('Final matières with status:', finalMatieres)
             setMatieres(finalMatieres)
-            console.log('State updated with status overlay')
           }
         } catch (statusError) {
           console.log('Status fetch failed, keeping planning data only:', statusError)
@@ -228,23 +174,26 @@ export function ValidationMatiere() {
     fetchData()
   }, [poste, refreshKey])
   
-  // Add debug logging for state changes
   useEffect(() => {
     console.log('Matieres state changed:', matieres.length, 'items')
-    console.log('Current matieres:', matieres)
   }, [matieres])
 
-  const validateMatier = async (id: string) => {
-    const matiere = matieres.find(m => m.id === id)
-    if (!matiere || !poste) return
-    
-    console.log('Validating matière:', {
-      id,
-      poste,
-      n_ordre: matiere.n_ordre,
-      ordre: matiere.ordre
-    })
-    
+  // [SCAN] — called by table “Valider” action: open scanner instead of immediate PUT
+  const openScannerFor = (id: string) => {
+    setScannerForId(id);
+  }
+
+  // [SCAN] — once user confirms the scanned code, we proceed with validation
+  const confirmScannedAndValidate = async (code: string) => {
+    setLastScannedCode(code);
+    if (!scannerForId) return;
+
+    const matiere = matieres.find(m => m.id === scannerForId)
+    if (!matiere || !poste) {
+      setScannerForId(null);
+      return;
+    }
+
     try {
       const response = await fetch(`http://localhost:5000/api/pdim/matiere/statut_matiere/${poste}/${matiere.n_ordre}`, {
         method: "PUT",
@@ -253,28 +202,29 @@ export function ValidationMatiere() {
           statut: "ready",
           besoin_machine: matiere.besoin_machine ? matiere.besoin_machine.toISOString().split('T')[0] : null,
           ordre: matiere.ordre
+          // If you want to store the code scanned somewhere later, you could extend backend
+          // scanned_code: code
         })
       })
       
       if (!response.ok) {
         console.error('Failed to validate matiere:', await response.text())
         alert('Erreur lors de la validation')
+        setScannerForId(null);
         return
       }
       
-      const responseData = await response.json()
-      console.log('Validation response:', responseData)
-      
-      console.log('Triggering refresh after small delay...')
-      // Add a small delay to ensure database transaction is committed
+      await response.json()
+      setScannerForId(null);
+
+      // Small delay to allow DB commit then refresh
       setTimeout(() => {
         setRefreshKey(k => k + 1)
-        console.log('Refresh triggered')
-      }, 500)
-      console.log('Matière validée avec succès')
+      }, 400)
     } catch (error) {
       console.error('Error validating matiere:', error)
       alert('Erreur lors de la validation')
+      setScannerForId(null);
     }
   }
 
@@ -308,7 +258,6 @@ export function ValidationMatiere() {
       setProblemCause("")
       setDetails("")
       setRefreshKey(k => k + 1)
-      console.log('Problème signalé avec succès')
     } catch (error) {
       console.error('Error submitting problem:', error)
       alert('Erreur lors du signalement')
@@ -333,16 +282,10 @@ export function ValidationMatiere() {
       filtered = filtered.filter(m => m.resource === selectedResource)
     }
     
-    // Sort by ordre column (e.g., S25-00, S25-01, S25-02...)
     filtered.sort((a, b) => {
       const ordreA = a.ordre || ''
       const ordreB = b.ordre || ''
-      
-      // Natural sorting for ordre values like S25-01, S25-02, etc.
-      return ordreA.localeCompare(ordreB, undefined, {
-        numeric: true,
-        sensitivity: 'base'
-      })
+      return ordreA.localeCompare(ordreB, undefined, { numeric: true, sensitivity: 'base' })
     })
     
     return filtered
@@ -384,10 +327,16 @@ export function ValidationMatiere() {
                   <th className="px-2 py-2 w-20">Statut</th>
                 </tr>
               </thead>
-            <tbody>
-              {matieresFiltered.map(m => (
-                <TableRowMatiere key={m.id} m={m} onValidate={validateMatier} onSignal={setShowForm} />
-              ))}
+              <tbody>
+                {matieresFiltered.map(m => (
+                  <TableRowMatiere
+                    key={m.id}
+                    m={m}
+                    // [SCAN] open barcode modal when clicking Valider
+                    onValidate={openScannerFor}
+                    onSignal={setShowForm}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -399,6 +348,7 @@ export function ValidationMatiere() {
           )}
         </div>
       </main>
+
       {showForm && (
         <ProblemFormModal
           problemCause={problemCause}
@@ -409,6 +359,14 @@ export function ValidationMatiere() {
           onSubmit={submitProblem}
         />
       )}
+
+      {/* [SCAN] Modal for barcode scan & confirmation */}
+      <BarcodeScannerModal
+        open={!!scannerForId}
+        onClose={() => setScannerForId(null)}
+        onConfirm={confirmScannedAndValidate}
+        title="Scanner pour valider la matière"
+      />
     </div>
   )
 }

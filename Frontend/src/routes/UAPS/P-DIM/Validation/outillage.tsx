@@ -7,6 +7,8 @@ import {
   ProblemFormModal
 } from '@/components/outillageUI';
 import { ResourceButtons } from '@/components/ResourceButtons';
+// [SCAN]
+import BarcodeScannerModal from '@/components/BarcodeScannerModal';
 
 export function ValidationOutils() {
   const [poste, setPoste] = useState<string>("");
@@ -18,6 +20,9 @@ export function ValidationOutils() {
   const [search, setSearch] = useState<string>("");
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const POSTES = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"]
+
+  // [SCAN] keep track of which tool is being validated
+  const [scannerForId, setScannerForId] = useState<string | null>(null);
 
   const uniqueResources = useMemo(() => {
     return Array.from(new Set(outils.map(o => o.resource))).filter(Boolean).sort();
@@ -32,19 +37,14 @@ export function ValidationOutils() {
     if (selectedResource) {
       filtered = filtered.filter(o => o.resource === selectedResource);
     }
-    
-    // Sort by ordre column (e.g., S25-00, S25-01, S25-02...)
     filtered.sort((a, b) => {
-      const ordreA = a.ordre || ''
-      const ordreB = b.ordre || ''
-      
-      // Natural sorting for ordre values like S25-01, S25-02, etc.
+      const ordreA = a.ordre || '';
+      const ordreB = b.ordre || '';
       return ordreA.localeCompare(ordreB, undefined, {
         numeric: true,
         sensitivity: 'base'
-      })
-    })
-    
+      });
+    });
     return filtered;
   }, [outils, search, selectedResource]);
 
@@ -54,45 +54,25 @@ export function ValidationOutils() {
       setOutils([]);
       return;
     }
-    
-    console.log('Fetching data for poste:', poste)
-    
-    // Fetch latest planning data (modifications if available, otherwise original)
     const fetchData = async () => {
       try {
-        const planningResponse = await fetch(`http://localhost:5000/api/pdim/planning/${poste}/edit`)
-        if (!planningResponse.ok) {
-          throw new Error('No planning found')
-        }
-        
-        const planningData = await planningResponse.json()
-        console.log('Planning data received:', planningData)
-        
-        // Extract outils data from planning
-        const planningItems = Array.isArray(planningData.data) ? planningData.data : []
-        console.log('Planning items count:', planningItems.length)
-        
+        const planningResponse = await fetch(`http://localhost:5000/api/pdim/planning/${poste}/edit`);
+        if (!planningResponse.ok) throw new Error('No planning found');
+        const planningData = await planningResponse.json();
+        const planningItems = Array.isArray(planningData.data) ? planningData.data : [];
         if (planningItems.length === 0) {
-          console.log('No planning items found, setting empty array')
-          setOutils([])
-          return
+          setOutils([]); return;
         }
-        
         const mapped = planningItems
-          .filter((item: any) => {
-            const hasNOrdre = item.n_ordre || item.N_ordre || item.n_Ordre || item['N° ordre'] || item['N° Ordre'] || item['n° ordre']
-            return hasNOrdre
-          })
+          .filter((item: any) => item.n_ordre || item.N_ordre || item['N° ordre'] || item['N° Ordre'])
           .map((item: any) => {
-            // Try different possible column names
-            const n_ordre = item.n_ordre || item.N_ordre || item.n_Ordre || item['N° ordre'] || item['N° Ordre'] || item['n° ordre'] || ""
-            const ordre = item.ordre || item.Ordre || item.ORDER || item['Ordre '] || ""
-            const article = item.article || item.Article || item.ARTICLE || ""
-            const article_description = item.article_description || item['Article Description'] || item.designation || ""
-            const resource = item.resource || item.Resource || item.RESOURCE || item.ressource || item.Ressource || ""
-            const infos_outillage = item['Infos mors profilé / outillage'] || item['Info outillage / ordo / moyen'] || ""
-            const commentaires = item.commentaires_planif || item['Commentaires Planif'] || item.commentaires || item.Commentaires || ""
-            
+            const n_ordre = item.n_ordre || item.N_ordre || item['N° ordre'] || item['N° Ordre'] || "";
+            const ordre = item.ordre || item.Ordre || item.ORDER || "";
+            const article = item.article || item.Article || "";
+            const article_description = item.article_description || item['Article Description'] || item.designation || "";
+            const resource = item.resource || item.Resource || item.ressource || "";
+            const infos_outillage = item['Infos mors profilé / outillage'] || item['Info outillage / ordo / moyen'] || "";
+            const commentaires = item.commentaires_planif || item['Commentaires Planif'] || "";
             return {
               id: `${n_ordre}__${ordre}`,
               ordre: String(ordre),
@@ -104,108 +84,90 @@ export function ValidationOutils() {
               resource: resource || null,
               commentaires_planif: commentaires || null,
               date_validation: null as string | null
-            }
-          })
-        
-        console.log('Mapped outils count:', mapped.length)
-        console.log('First mapped item:', mapped[0])
-        
-        // Set the initial data first
-        setOutils(mapped)
-        console.log('State updated with mapped data')
-        
-        // Then try to overlay status data
+            };
+          });
+        setOutils(mapped);
+
         try {
-          const statusResponse = await fetch(`http://localhost:5000/api/pdim/outils/${poste}`)
-          const statusData = await statusResponse.json()
-          console.log('Status data received:', statusData)
-          
-          const statusMap = new Map()
+          const statusResponse = await fetch(`http://localhost:5000/api/pdim/outils/${poste}`);
+          const statusData = await statusResponse.json();
+          const statusMap = new Map();
           if (Array.isArray(statusData.outils)) {
             statusData.outils.forEach((o: any) => {
-              // Use composite key: n_ordre + ordre for more precise matching
               const key = `${String(o.n_ordre)}_${o.ordre || ''}`;
               statusMap.set(key, {
                 statut: o.statut,
                 date_validation: o.date_validation,
                 ordre: o.ordre
-              })
-            })
+              });
+            });
           }
-          
-          // Update with status overlay
           if (statusMap.size > 0) {
             const finalOutils = mapped.map((item: any) => {
-              // Try matching with composite key first, then fallback to n_ordre only
               const compositeKey = `${item.n_ordre}_${item.ordre}`;
               let statusInfo = statusMap.get(compositeKey);
-              
-              // If no match with composite key, try to find by n_ordre and matching ordre
               if (!statusInfo) {
                 for (const [key, value] of statusMap.entries()) {
                   const [statusNOrdre, statusOrdre] = key.split('_');
                   if (statusNOrdre === item.n_ordre && (statusOrdre === item.ordre || (!statusOrdre && !item.ordre))) {
-                    statusInfo = value;
-                    break;
+                    statusInfo = value; break;
                   }
                 }
               }
-              
-              const result = {
+              return {
                 ...item,
                 statut: statusInfo
-                  ? (["pending", "ready", "missing"].includes(statusInfo.statut)
-                     ? statusInfo.statut
-                     : "pending")
+                  ? (["pending", "ready", "missing"].includes(statusInfo.statut) ? statusInfo.statut : "pending")
                   : "pending",
                 date_validation: statusInfo?.date_validation || item.date_validation || null
               };
-              
-              return result;
-            })
-            
-            console.log('Final outils with status:', finalOutils)
-            setOutils(finalOutils)
-            console.log('State updated with status overlay')
+            });
+            setOutils(finalOutils);
           }
         } catch (statusError) {
-          console.log('Status fetch failed, keeping planning data only:', statusError)
+          console.log('Status fetch failed:', statusError);
         }
-        
       } catch (err) {
-        console.error("Erreur fetch planning :", err)
-        setOutils([])
+        console.error("Erreur fetch planning :", err);
+        setOutils([]);
       }
     }
-    
-    fetchData()
-  }, [poste, refreshKey])
-  
-  // Add debug logging for state changes
-  useEffect(() => {
-    console.log('Outils state changed:', outils.length, 'items')
-    console.log('Current outils:', outils)
-  }, [outils])
+    fetchData();
+  }, [poste, refreshKey]);
 
-  const validateTool = useCallback(async (id: string) => {
-    const [n_ordre, ordre] = id.split('__');
+  // [SCAN] open scanner
+  const openScannerFor = useCallback((id: string) => {
+    setScannerForId(id);
+  }, []);
+
+  // [SCAN] confirm scanned code then validate
+  const confirmScannedAndValidate = useCallback(async (code: string) => {
+    if (!scannerForId) return;
+    const [n_ordre, ordre] = scannerForId.split('__');
     const tool = outils.find(o => o.n_ordre === n_ordre && o.ordre === ordre);
-    if (!tool || !poste) return;
+    if (!tool || !poste) {
+      setScannerForId(null);
+      return;
+    }
     try {
       const response = await fetch(`http://localhost:5000/api/pdim/outils/statut/${poste}/${tool.n_ordre}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ statut: "ready", ordre: tool.ordre })
+        body: JSON.stringify({
+          statut: "ready",
+          ordre: tool.ordre
+          // scanned_code: code // (optional: extend backend if needed)
+        })
       });
-      
       if (response.ok) {
-        // Trigger refresh to get updated data from backend
-        setRefreshKey(k => k + 1);
+        setTimeout(() => setRefreshKey(k => k + 1), 400);
       }
     } catch (error) {
       console.error("Erreur validation:", error);
+    } finally {
+      setScannerForId(null);
     }
-  }, [outils, poste]);
+  }, [scannerForId, outils, poste]);
 
   const reportProblem = useCallback((id: string) => {
     setProblemCause("");
@@ -246,12 +208,9 @@ export function ValidationOutils() {
   return (
     <ProtectedRoute requiredRoute="/UAPS/P-DIM/Validation/outillage">
       <div className="flex flex-col min-h-screen bg-gray-50">
-        <header className="w-full bg-gradient-to-r from-[#ef8f0e] to-[#d47e0d] text-white shadow-[0_2px_10px_rgba(0,0,0,0.1)] border-b border-white/20 py-4 px-6 flex items-center justify-between gap-6">
-        <div className={`text-2xl font-['Raleway'] text-white [1px_1px_3px_rgba(0,0,0,0.3)] relative inline-block group rounded px-2 py-1 transition-colors duration-200 `}>
-          Validation outillage
-        </div>
-        <div className={`text-2xl font-['Raleway'] text-white [1px_1px_3px_rgba(0,0,0,0.3)] `}>
-          P-DIM</div>
+        <header className="w-full bg-gradient-to-r from-[#ef8f0e] to-[#d47e0d] text-white shadow-md border-b border-white/20 py-4 px-6 flex items-center justify-between gap-6">
+          <div className="text-2xl font-['Raleway']">Validation outillage</div>
+          <div className="text-2xl font-['Raleway']">P-DIM</div>
         </header>
         <main className="flex-1 p-8">
           <div className="max-w-8xl mx-auto bg-white rounded-lg shadow-md p-6">
@@ -271,7 +230,12 @@ export function ValidationOutils() {
                 className="border rounded px-3 py-2 w-64"
               />
             </div>
-            <ToolTable tools={outilsFiltered} validateTool={validateTool} reportProblem={reportProblem} />
+            <ToolTable
+              tools={outilsFiltered}
+              // [SCAN] pass scanner function instead of direct validate
+              validateTool={openScannerFor}
+              reportProblem={reportProblem}
+            />
             {outils.length > 0 && (
               <div className="mt-4 text-sm text-right text-gray-700">
                 Nombre total de lignes : <span className="font-semibold">{outils.length}</span>
@@ -292,6 +256,13 @@ export function ValidationOutils() {
             onSubmit={submitProblem}
           />
         )}
+        {/* [SCAN] barcode scanner modal */}
+        <BarcodeScannerModal
+          open={!!scannerForId}
+          onClose={() => setScannerForId(null)}
+          onConfirm={confirmScannedAndValidate}
+          title="Scanner pour valider l'outillage"
+        />
       </div>
     </ProtectedRoute>
   );
