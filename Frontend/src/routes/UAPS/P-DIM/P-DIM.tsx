@@ -17,6 +17,7 @@ type ProductionRow = {
   poste: string;
   "MAM-A": string; "DA3-A": string; "A61NX": string; "NH4-A": string; "NM5-A": string;
 };
+
 const columns: { key: PosteKey; label: string }[] = [
   { key: "poste", label: "Poste de travail" },
   { key: "MAM-A", label: "MAM-A" },
@@ -25,17 +26,19 @@ const columns: { key: PosteKey; label: string }[] = [
   { key: "NH4-A", label: "NH4-A" },
   { key: "NM5-A", label: "NM5-A" },
 ];
+
 const initialProductionData: ProductionRow[] = [
   { poste: "Heures engagés", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
   { poste: "TRS", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
-  { poste: "nbre de Machines Planifiés", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
-  { poste: "nbre de Machines en panne", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
-  { poste: "couverture Matière / heures", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
+  { poste: "Nbre de Machines Planifiés", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
+  { poste: "Nbre de Machines en panne", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
+  { poste: "Couverture Matière / heures", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
   { poste: "Taux de couverture Matière", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
   { poste: "Total Retard de lancements", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
   { poste: "Total Retard de lancements planifié", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" },
   { poste: "Retard de lancements projeté", "MAM-A": "", "DA3-A": "", "A61NX": "", "NH4-A": "", "NM5-A": "" }
 ];
+
 const initialRuptureData: RuptureData[] = [];
 const newRuptureRow: RuptureData = {
   article: "", quantite: "", priorite: "1", criticite: "1", reception: "", commentaire: ""
@@ -66,7 +69,7 @@ function TablesComponent() {
   // Handlers UI
   const handleWeekSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
-    
+
     if (selectedValue === 'new') {
       setIsCreatingNew(true);
       setNewWeekInput('');
@@ -88,29 +91,29 @@ function TablesComponent() {
 
   const handleNewWeekSubmit = () => {
     const trimmedWeek = newWeekInput.trim();
-    
+
     if (!trimmedWeek) {
       setWeekFormatError('Le numéro de semaine est requis');
       return;
     }
-    
+
     if (!validateWeekFormat(trimmedWeek)) {
       setWeekFormatError('Format invalide. Utilisez le format YYYY-W## (ex: 2025-W32)');
       return;
     }
-    
+
     console.log('Creating new week:', trimmedWeek); // Debug log
-    
+
     // Clear any previous error
     setWeekFormatError('');
-    
+
     // Add the new week to available weeks list first
     addWeekToAvailable(trimmedWeek);
-    
+
     // Then set the week number and clear data
     setWeekNumber(trimmedWeek);
     clearTableData();
-    
+
     // Reset the form state
     setIsCreatingNew(false);
     setNewWeekInput('');
@@ -130,23 +133,30 @@ function TablesComponent() {
     setIsCreatingNew(false);
     setNewWeekInput('');
     setWeekFormatError('');
-    // Reset select to current week or empty
-    // The select will show the current weekNumber value
   };
 
   // Handle input change with real-time validation feedback
   const handleWeekInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setNewWeekInput(value);
-    
-    // Clear error when user starts typing
-    if (weekFormatError) {
-      setWeekFormatError('');
-    }
+
+    if (weekFormatError) setWeekFormatError('');
   };
 
   // Check if the current input is valid for enabling/disabling OK button
   const isWeekFormatValid = newWeekInput.trim() && validateWeekFormat(newWeekInput.trim());
+
+  // ---- READ-ONLY + STYLING FOR FIRST COLUMN ("poste") ----
+  // Guard to block edits in first column
+  const handleProdCellChangeGuard = (
+    rowIndex: number,
+    key: PosteKey,
+    value: string
+  ) => {
+    if (key === 'poste') return; // block edits to first column
+    handleProdCellChange(rowIndex, key, value);
+  };
+  // --------------------------------------------------------
 
   const handleExport = () => {
     exportToExcel({
@@ -170,6 +180,26 @@ function TablesComponent() {
 
   return (
     <div className="space-y-8">
+      {/* simple global CSS to style the first column like a header (bold, no input borders) */}
+      <style>{`
+        /* Scope to the Recap Planning table only */
+        .recap-planning table td:first-child,
+        .recap-planning table th:first-child {
+          font-weight: 700; /* bold */
+        }
+        /* Remove the "frame" on inputs in the first column (if EditableTable renders inputs there) */
+        .recap-planning table td:first-child input,
+        .recap-planning table td:first-child textarea {
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          outline: none !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          pointer-events: none; /* also prevents focusing/editing */
+        }
+      `}</style>
+
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">
           <label htmlFor="weekSelect" className="text-lg font-medium">N°.sem:</label>
@@ -232,6 +262,7 @@ function TablesComponent() {
           </Button>
         </div>
       </div>
+
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-[25px] font-['Raleway'] text-[#ef8f0e] ]">
@@ -239,13 +270,17 @@ function TablesComponent() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <EditableTable
-            data={productionData}
-            columns={columns}
-            onCellChange={handleProdCellChange}
-          />
+          <div className="recap-planning">
+            <EditableTable
+              data={productionData}
+              columns={columns}
+              // keep column 1 read-only
+              onCellChange={handleProdCellChangeGuard}
+            />
+          </div>
         </CardContent>
       </Card>
+
       <Card className="shadow-lg">
         <CardHeader className="flex justify-between items-center">
           <CardTitle className="text-[25px] font-['Raleway'] text-orange-500 font-bold">
