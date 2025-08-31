@@ -355,18 +355,7 @@ export function PlanningEditor({
                       'Enregistrer'}
               </Button>
 
-              {modifCount !== null && (
-                <div className="mb-4 text-left mt-1">
-                  <span className="text-[#000] font-bold text-lg">
-                    Version : {modifCount}
-                    {isModified && originalVersion && (
-                      <span className="ml-2 text-sm text-gray-600 font-normal">
-                        (basée sur l'original v{originalVersion})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              )}
+              
             </div>
           </>
         )}

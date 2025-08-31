@@ -54,7 +54,6 @@ function parseDate(d: any): string | null {
   return isNaN(dt.getTime()) ? null : dt.toISOString();
 }
 
-
 function OFSummaryTable({ data }: { data: any[] }) {
   if (!data || data.length === 0) {
     return <p className="text-center py-6 text-gray-500">Aucune donnée de résumé disponible</p>;
@@ -108,8 +107,7 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
       {/* OF signalés */}
       <div className="flex-1 min-w-[320px]">
         <h3 className="mb-2 font-semibold text-gray-900">OF signalés</h3>
-    <table className="min-w-full border border-gray-200 rounded-3xl shadow-xl overflow-hidden bg-white">
-
+        <table className="min-w-full border border-gray-200 rounded-3xl shadow-xl overflow-hidden bg-white">
           <thead className="bg-gray-100 text-gray-900 rounded-t-lg border-b border-gray-200">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-bold">Poste</th>
@@ -145,8 +143,7 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
       {/* Outils signalés */}
       <div className="flex-1 min-w-[320px]">
         <h3 className="mb-2 font-semibold text-gray-900">Outils signalés</h3>
-       <table className="min-w-full border border-gray-200 rounded-3xl shadow-xl overflow-hidden bg-white">
-
+        <table className="min-w-full border border-gray-200 rounded-3xl shadow-xl overflow-hidden bg-white">
           <thead className="bg-gray-100 text-gray-900 rounded-t-lg border-b border-gray-200">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-bold">Poste</th>
@@ -183,7 +180,6 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
       <div className="flex-1 min-w-[320px]">
         <h3 className="mb-2 font-semibold text-gray-900">Matières signalées</h3>
         <table className="min-w-full border border-gray-200 rounded-3xl shadow-xl overflow-hidden bg-white">
-
           <thead className="bg-gray-100 text-gray-900 rounded-t-lg  border-gray-200">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-bold">Poste</th>
@@ -219,7 +215,6 @@ function CombinedSignalsTables({ signals }: { signals: CombinedSignal[] }) {
   );
 }
 
-
 function RouteComponent() {
   const [error, setError] = useState<string | null>(null);
   const [combinedSignales, setCombinedSignales] = useState<CombinedSignal[]>([]);
@@ -228,7 +223,7 @@ function RouteComponent() {
   const [importedData, setImportedData] = useState<ImportedData[]>([]);
   const [resumeData, setResumeData] = useState<any[]>([]);
   const [showResumeTable, setShowResumeTable] = useState(false);
-  
+
   // Initialize with yesterday's date
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -239,12 +234,17 @@ function RouteComponent() {
   const loadData = (date?: Date) => {
     const targetDate = date || selectedDate;
     const dateStr = targetDate.toLocaleDateString("fr-CA");
-    
+
     fetch(`http://localhost:5000/api/pdim/journalier?date=${dateStr}`)
       .then((res) => res.json())
       .then((json) => {
         setCombinedSignales(json.combined_signales || []);
         setDashboardData(json);
+        // NEW: if backend says résumé is stored/calculated, show it
+        if (json && Array.isArray(json.of_summary)) {
+          setShowResumeTable(false);       // show server data by default
+          setResumeData([]);               // clear client-imported view unless importing
+        }
         setError(null);
       })
       .catch((err) => {
@@ -289,7 +289,7 @@ function RouteComponent() {
         "N° Ordre": row.n_ordre || "",
         Cause: row.cause,
         Détail: row.detaille,
-        Résolu: row.statut_matiere === "ready" ? "oui" : "non",
+        Résolu: row.statut_of === "closed" ? "oui" : "non",
       }));
       const wsOF = XLSX.utils.json_to_sheet(ofRows);
       XLSX.utils.book_append_sheet(wb, wsOF, "OF signalés");
@@ -317,7 +317,7 @@ function RouteComponent() {
         "N° Ordre": row.n_ordre || "",
         Cause: row.cause,
         Détail: row.detaille,
-        Résolu: row.statut_of === "closed" ? "oui" : "non",
+        Résolu: row.statut_matiere === "ready" ? "oui" : "non",
       }));
       const wsMatiere = XLSX.utils.json_to_sheet(matiereRows);
       XLSX.utils.book_append_sheet(wb, wsMatiere, "Matières signalées");
@@ -326,7 +326,7 @@ function RouteComponent() {
     // Export résumé OF - Use imported data if available, otherwise API data
     const summaryDataToExport = showResumeTable && resumeData.length > 0 ? resumeData :
       (dashboardData && dashboardData.of_summary ? dashboardData.of_summary : []);
-    
+
     if (summaryDataToExport.length > 0) {
       const summaryRows = summaryDataToExport.map((row: any) => ({
         "Poste de Charge": row.poste,
@@ -342,9 +342,11 @@ function RouteComponent() {
   };
 
   const saveSummary = async () => {
-    const dataToSave = showResumeTable && resumeData.length > 0 ? resumeData :
-      (dashboardData && dashboardData.of_summary ? dashboardData.of_summary : null);
-    
+    // Prefer the imported résumé if present; otherwise use API résumé
+    const dataToSave =
+      (showResumeTable && resumeData.length > 0) ? resumeData :
+      (dashboardData && Array.isArray(dashboardData.of_summary) ? dashboardData.of_summary : null);
+
     if (!dataToSave) {
       setError("Aucune donnée à sauvegarder. Veuillez d'abord charger ou importer des données.");
       return;
@@ -355,34 +357,32 @@ function RouteComponent() {
 
     try {
       const dateStr = selectedDate.toLocaleDateString("fr-CA");
-      
-      // Prepare the data for the backend
-      const requestData = {
-        rows: dataToSave.map((summary: any) => ({
-          poste: summary.poste,
-          total_heures_rendues: parseFloat(summary.heures_rendues) || 0
-        })),
-        date_value: dateStr,
-        dashboard_data: showResumeTable ? { of_summary: resumeData, imported: true } : dashboardData
-      };
+
+      // Expect fields: poste, of_clotures, of_en_cours, heures_rendues
+      const rows = dataToSave.map((summary: any) => ({
+        poste: summary.poste,
+        of_clotures: Number(summary.of_clotures) || 0,
+        of_en_cours: Number(summary.of_en_cours) || 0,
+        heures_rendues: parseFloat(summary.heures_rendues) || 0
+      }));
 
       const response = await fetch('http://localhost:5000/api/pdim/journalier/saveSummary', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rows,
+          date_value: dateStr,
+          source: showResumeTable ? 'imported' : (dashboardData?.summary_source || 'calculated'),
+          imported_by: null
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
       const result = await response.json();
-      
-      // Show success message
-      alert(result.message || 'Données sauvegardées avec succès!');
-      
+
+      alert(result.message || 'Résumé enregistré avec succès!');
+      // After saving, re-load from server so future refreshes read the stored résumé
+      loadData(selectedDate);
     } catch (err: any) {
       console.error('Erreur lors de la sauvegarde:', err);
       setError(err.message || 'Erreur lors de la sauvegarde des données');
@@ -401,16 +401,16 @@ function RouteComponent() {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        
+
         let allImportedData: ImportedData[] = [];
         let ofData: OFRow[] = [];
         const postesAutorises = ["MAM-A", "DA3-A", "A61NX", "NH4-A", "NM5-A"];
 
-        // Process each sheet
+        // Process each sheetZ
         workbook.SheetNames.forEach(sheetName => {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
+
           // Skip if no data
           if (jsonData.length < 2) return;
 
@@ -468,29 +468,29 @@ function RouteComponent() {
 
         // Set imported data
         setImportedData(allImportedData);
-        
+
         // Process OF data to create résumé or use signalement data
         if (ofData.length > 0) {
           processOFDataForResume(ofData);
         } else {
           processImportedDataForResume(allImportedData);
         }
-        
+
         // Update combined signals to show imported data
         setCombinedSignales(allImportedData);
-        
+
         // Show success message
         const totalRows = allImportedData.length + ofData.length;
         alert(`Données importées avec succès! ${totalRows} lignes traitées (${ofData.length} lignes OF, ${allImportedData.length} lignes signalements).`);
-        
+
       } catch (error) {
         console.error('Erreur lors de l\'importation:', error);
         setError('Erreur lors de l\'importation du fichier Excel');
       }
     };
-    
+
     reader.readAsBinaryString(file);
-    
+
     // Reset input value to allow re-importing the same file
     event.target.value = '';
   };
@@ -498,10 +498,10 @@ function RouteComponent() {
   // Process OF data to create résumé with proper calculations
   const processOFDataForResume = (data: OFRow[]) => {
     const postes = ['A61NX', 'DA3-A', 'MAM-A', 'NH4-A', 'NM5-A'];
-    
+
     const resumeArray = postes.map(poste => {
       const posteData = data.filter(row => row["Poste de Charge"] === poste);
-      
+
       let of_clotures = 0;
       let of_en_cours = 0;
       let heures_rendues = 0;
@@ -511,7 +511,7 @@ function RouteComponent() {
         const end = row["Date fin op. réelle"] ? row["Date fin op. réelle"].slice(0, 10) : null;
         const isClosed = start && end && start === end;
         const isInProgress = !end || start !== end;
-        
+
         if (isClosed) {
           of_clotures += 1;
         } else if (isInProgress) {
@@ -536,7 +536,7 @@ function RouteComponent() {
   const processImportedDataForResume = (data: ImportedData[]) => {
     // Define the postes as in the reference controller
     const postes = ['A61NX', 'DA3-A', 'MAM-A', 'NH4-A', 'NM5-A'];
-    
+
     // Create résumé data for each poste
     const resumeArray = postes.map(poste => {
       // Count OF signalés for this poste
@@ -580,56 +580,64 @@ function RouteComponent() {
     setShowResumeTable(true);
   };
 
-return (
-  <div className="min-h-screen flex flex-col bg-white">
-    <NavigationMenupdim />
+  // Shared button base styles
+  const baseBtn =
+    "inline-flex items-center px-5 py-2.5 rounded-lg font-semibold shadow-lg transition " +
+    "focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60";
 
-    <main className="flex-grow p-15 max-w-8xl ml-4">
-      <div className="flex flex-col items-center mb-6">
-      <p className="text-2xl font-bold font-['Raleway'] mb-6 text-center tracking-wide bg-gradient-to-r from-[#ffa726] to-[#cc6600] bg-clip-text text-transparent">          Rapport journalier P-DIM : {format(selectedDate, "dd/MM/yyyy", { locale: fr })}
-        </p>
-        
-        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-[240px] justify-start text-left font-normal"
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {format(selectedDate, "dd MMMM yyyy", { locale: fr })}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              disabled={(date) => date > maxDate || date > new Date()}
-              initialFocus
-              locale={fr}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      <NavigationMenupdim />
 
-      {error && <p className="text-red-600 mb-6 text-center">{error}</p>}
+      <main className="flex-grow p-15 max-w-8xl ml-4">
+        <div className="flex flex-col items-center mb-6">
+          <p className="text-2xl font-bold font-['Raleway'] mb-6 text-center tracking-wide bg-gradient-to-r from-[#ffa726] to-[#cc6600] bg-clip-text text-transparent">
+            Rapport journalier P-DIM : {format(selectedDate, "dd/MM/yyyy", { locale: fr })}
+          </p>
 
-      {/* Tables des signalements */}
-      <CombinedSignalsTables signals={combinedSignales} />
+          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-[240px] justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedDate, "dd MMMM yyyy", { locale: fr })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                disabled={(date) => date > maxDate || date > new Date()}
+                initialFocus
+                locale={fr}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
-      {/* Table résumé OF - Show only imported data */}
-      {showResumeTable && resumeData.length > 0 ? (
-        <OFSummaryTable data={resumeData} />
-      ) : (
-        <OFSummaryTable data={[]} />
-      )}
+        {error && <p className="text-red-600 mb-6 text-center">{error}</p>}
 
-      {/* Excel Import Section */}
-      <div className="flex justify-center mb-6">
-        <div className="flex flex-col items-center">
-          <label className="mb-2 text-sm font-medium text-gray-700">
-            Importer un fichier Excel pour générer le résumé OF
-          </label>
+       
+
+        {/* Tables des signalements */}
+        <CombinedSignalsTables signals={combinedSignales} />
+
+        {/* Table résumé OF */}
+        {showResumeTable && resumeData.length > 0 ? (
+          <OFSummaryTable data={resumeData} />
+        ) : dashboardData && dashboardData.of_summary ? (
+          <OFSummaryTable data={dashboardData.of_summary} />
+        ) : (
+          <OFSummaryTable data={[]} />
+        )}
+
+
+         {/* Action toolbar: left-aligned, consistent design */}
+<div className="flex flex-wrap items-center gap-3 mt-4">       
+     {/* Hidden input + styled label as button */}
           <input
             type="file"
             accept=".xlsx,.xls"
@@ -639,40 +647,37 @@ return (
           />
           <label
             htmlFor="excel-file-input"
-            className="cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold py-2 px-4 rounded-lg text-sm"
+            className={`${baseBtn} cursor-pointer border bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200 focus:ring-orange-400`}
           >
             Choisir un fichier
           </label>
+
+          <button
+            onClick={exportToExcel}
+            className={`${baseBtn} bg-green-600 hover:bg-green-700 text-white focus:ring-green-400`}
+          >
+            Exporter rapport complet vers Excel
+          </button>
+
+          {/* Afficher le bouton Sauvegarder SEULEMENT après import */}
+          {showResumeTable && resumeData.length > 0 && (
+            <button
+              onClick={saveSummary}
+              disabled={isSaving}
+              className={
+                isSaving
+                  ? `${baseBtn} bg-gray-400 text-gray-100 cursor-not-allowed`
+                  : `${baseBtn} bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-400`
+              }
+            >
+              {isSaving ? "Sauvegarde..." : "Sauvegarder le résumé"}
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Boutons d'export et sauvegarde */}
-      <div className="flex justify-center gap-4 mt-8">
-        <button
-          onClick={exportToExcel}
-          className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold transition shadow-lg"
-        >
-           Exporter rapport complet vers Excel
-        </button>
-        <button
-          onClick={saveSummary}
-          disabled={isSaving || (!dashboardData && !showResumeTable)}
-          className={`px-8 py-3 rounded-lg font-semibold transition shadow-lg ${
-            isSaving || (!dashboardData && !showResumeTable)
-              ? 'bg-gray-400 cursor-not-allowed text-gray-600'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-        >
-          {isSaving ? ' Sauvegarde...' : ' Sauvegarder le résumé'}
-        </button>
-      </div>
-    </main>
-  </div>
-);
-
-
-
-
+      </main>
+    </div>
+  );
 }
 
 export const Route = createFileRoute("/UAPS/P-DIM/journalier")({
@@ -680,6 +685,3 @@ export const Route = createFileRoute("/UAPS/P-DIM/journalier")({
 });
 
 export default RouteComponent;
-
-
-

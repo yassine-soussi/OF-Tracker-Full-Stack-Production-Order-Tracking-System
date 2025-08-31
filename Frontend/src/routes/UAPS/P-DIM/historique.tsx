@@ -37,7 +37,7 @@ function HistoriquepdimPage() {
       <NavigationMenupdim />
       <div className="flex-1 px-15 pt-10 pb-0">
         <HistoriqueSection
-          title="OF"
+          title="Historique OF"
           columns={HISTORIQUE_COLUMNS}
           data={filteredData}
           search={search}
@@ -51,7 +51,7 @@ function HistoriquepdimPage() {
 
         <div className="h-7" />
         <HistoriqueSection
-          title="Matière"
+          title="Historique Matière"
           columns={MATIERE_COLUMNS}
           data={filteredMatiere}
           search={matiereSearch}
@@ -60,7 +60,7 @@ function HistoriquepdimPage() {
 
         <div className="h-7" />
         <HistoriqueSection
-          title="Outil"
+          title="Historique Outil"
           columns={OUTIL_COLUMNS}
           data={filteredOutil}
           search={outilSearch}

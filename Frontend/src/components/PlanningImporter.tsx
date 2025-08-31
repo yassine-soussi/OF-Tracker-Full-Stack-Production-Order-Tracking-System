@@ -142,9 +142,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       <div className="flex-1 p-8">
         <h1 className="text-2xl font-bold mb-6 text-black">
           Importer le planning
-          <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md font-normal">
-            Données originales uniquement
-          </span>
+          
         </h1>
         <PosteSelection selectedPoste={poste} onSelect={handlePosteChange} />
 
